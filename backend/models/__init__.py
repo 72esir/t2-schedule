@@ -1,7 +1,8 @@
 import enum
-from datetime import datetime, date
+from datetime import datetime
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Column,
     Date,
@@ -13,10 +14,14 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
-from db import Base
+from backend.db import Base
+
+try:
+    from sqlalchemy.dialects.postgresql import JSONB as JSONType
+except ImportError:
+    JSONType = JSON
 
 
 class UserRole(str, enum.Enum):
@@ -29,7 +34,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    external_id = Column(String(32), unique=True, index=True, nullable=True)  # e.g. "6505365461"
+    external_id = Column(String(32), unique=True, index=True, nullable=True)
     email = Column(String(255), unique=True, index=True, nullable=True)
     password_hash = Column(String(255), nullable=True)
 
@@ -74,10 +79,10 @@ class ScheduleEntry(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    period_id = Column(Integer, ForeignKey("collection_periods.id", ondelete="CASCADE"), nullable=False)  # новое поле
+    period_id = Column(Integer, ForeignKey("collection_periods.id", ondelete="CASCADE"), nullable=False)
     day = Column(Date, nullable=False)
     status = Column(String(128), nullable=False)
-    meta = Column(JSONB, nullable=True)
+    meta = Column(JSONType, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -93,14 +98,14 @@ class ScheduleTemplate(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    name = Column(String(255), nullable=False)  # "5/2, 09:00-18:15"
-    work_days = Column(Integer, nullable=False)  # 5
-    rest_days = Column(Integer, nullable=False)  # 2
-    shift_start = Column(String(5), nullable=False)  # "09:00"
-    shift_end = Column(String(5), nullable=False)  # "18:15"
+    name = Column(String(255), nullable=False)
+    work_days = Column(Integer, nullable=False)
+    rest_days = Column(Integer, nullable=False)
+    shift_start = Column(String(5), nullable=False)
+    shift_end = Column(String(5), nullable=False)
     has_break = Column(Boolean, default=False, nullable=False)
-    break_start = Column(String(5), nullable=True)  # "14:30"
-    break_end = Column(String(5), nullable=True)  # "17:00"
+    break_start = Column(String(5), nullable=True)
+    break_end = Column(String(5), nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -112,7 +117,7 @@ class CollectionPeriod(Base):
     __tablename__ = "collection_periods"
 
     id = Column(Integer, primary_key=True, index=True)
-    alliance = Column(Text, nullable=False, index=True)  # привязка к альянсу
+    alliance = Column(Text, nullable=False, index=True)
     period_start = Column(Date, nullable=False)
     period_end = Column(Date, nullable=False)
     deadline = Column(DateTime(timezone=True), nullable=False)

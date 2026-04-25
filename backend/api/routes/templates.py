@@ -3,10 +3,10 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from auth import get_current_verified_user
-from db import get_db
-from models import ScheduleTemplate, User
-from schemas import ScheduleTemplateCreate, ScheduleTemplateOut
+from backend.core import get_current_verified_user
+from backend.db import get_db
+from backend.models import ScheduleTemplate, User
+from backend.schemas import ScheduleTemplateCreate, ScheduleTemplateOut
 
 router = APIRouter(prefix="/templates", tags=["templates"])
 
@@ -14,19 +14,21 @@ router = APIRouter(prefix="/templates", tags=["templates"])
 @router.get("", response_model=List[ScheduleTemplateOut])
 def get_my_templates(
     current_user: User = Depends(get_current_verified_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    templates = db.query(ScheduleTemplate).filter(
-        ScheduleTemplate.user_id == current_user.id
-    ).order_by(ScheduleTemplate.created_at.desc()).all()
-    return templates
+    return (
+        db.query(ScheduleTemplate)
+        .filter(ScheduleTemplate.user_id == current_user.id)
+        .order_by(ScheduleTemplate.created_at.desc())
+        .all()
+    )
 
 
 @router.post("", response_model=ScheduleTemplateOut, status_code=status.HTTP_201_CREATED)
 def create_template(
     payload: ScheduleTemplateCreate,
     current_user: User = Depends(get_current_verified_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     template = ScheduleTemplate(
         user_id=current_user.id,
@@ -37,7 +39,7 @@ def create_template(
         shift_end=payload.shift_end,
         has_break=payload.has_break,
         break_start=payload.break_start,
-        break_end=payload.break_end
+        break_end=payload.break_end,
     )
     db.add(template)
     db.commit()
@@ -49,16 +51,16 @@ def create_template(
 def delete_template(
     template_id: int,
     current_user: User = Depends(get_current_verified_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     template = db.query(ScheduleTemplate).filter(
         ScheduleTemplate.id == template_id,
-        ScheduleTemplate.user_id == current_user.id
+        ScheduleTemplate.user_id == current_user.id,
     ).first()
-
     if not template:
         raise HTTPException(status_code=404, detail="Шаблон не найден")
 
     db.delete(template)
     db.commit()
     return None
+
