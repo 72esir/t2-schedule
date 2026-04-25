@@ -62,6 +62,32 @@ class UserMe(UserOut):
     pass
 
 
+class UserStreakPeriodResult(BaseModel):
+    period_id: int
+    period_start: date
+    period_end: date
+    deadline: datetime
+    success: bool
+    reason: str
+
+
+class UserStreakOut(BaseModel):
+    current_streak: int
+    longest_streak: int
+    completed_periods_count: int
+    evaluated_periods_count: int
+    history: list[UserStreakPeriodResult]
+
+
+class UserStreakLeaderboardItem(BaseModel):
+    user_id: int
+    full_name: str
+    email: Optional[EmailStr] = None
+    current_streak: int
+    longest_streak: int
+    completed_periods_count: int
+
+
 class VerificationRequest(BaseModel):
     token: str
 

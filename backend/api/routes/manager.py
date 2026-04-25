@@ -23,9 +23,10 @@ from backend.schemas import (
     ScheduleChangeRequestDecision,
     ScheduleChangeRequestManagerOut,
     UserOut,
+    UserStreakLeaderboardItem,
     VacationDaysModerationRequest,
 )
-from backend.services import build_schedule_validation
+from backend.services import build_alliance_streak_leaderboard, build_schedule_validation
 
 router = APIRouter(prefix="/manager", tags=["manager"])
 
@@ -340,6 +341,14 @@ def get_pending_verification_users(
     )
 
 
+@router.get("/streaks", response_model=List[UserStreakLeaderboardItem])
+def get_streak_leaderboard(
+    current_user: User = Depends(require_manager),
+    db: Session = Depends(get_db),
+):
+    return build_alliance_streak_leaderboard(db, alliance=current_user.alliance)
+
+
 @router.get("/users", response_model=List[UserOut])
 def get_users(
     verified: Optional[bool] = None,
@@ -378,6 +387,26 @@ def verify_user(
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.delete("/users/{user_id}/reject", status_code=204)
+def reject_user_registration(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_manager),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Р СџР С•Р В»РЎРЉР В·Р С•Р Р†Р В°РЎвЂљР ВµР В»РЎРЉ Р Р…Р Вµ Р Р…Р В°Р в„–Р Т‘Р ВµР Р…")
+    if user.alliance != current_user.alliance:
+        raise HTTPException(status_code=403, detail="Р СњР ВµРЎвЂљ Р Т‘Р С•РЎРѓРЎвЂљРЎС“Р С—Р В° Р С” РЎРѓР С•РЎвЂљРЎР‚РЎС“Р Т‘Р Р…Р С‘Р С”РЎС“ Р С‘Р В· Р Т‘РЎР‚РЎС“Р С–Р С•Р С–Р С• Р В°Р В»РЎРЉРЎРЏР Р…РЎРѓР В°")
+    if user.is_verified:
+        raise HTTPException(status_code=400, detail="Cannot reject an already verified user")
+    if user.role != UserRole.USER:
+        raise HTTPException(status_code=400, detail="Only employee registrations can be rejected")
+
+    db.delete(user)
+    db.commit()
 
 
 @router.put("/users/{user_id}/vacation-days", response_model=UserOut)
