@@ -207,6 +207,8 @@ class ScheduleChangeRequestManagerOut(ScheduleChangeRequestOut):
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
     alliance: Optional[str] = None
+    current_days: Dict[date, ScheduleDayPayload] = Field(default_factory=dict)
+    changed_days: list[date] = Field(default_factory=list)
 
 
 class ScheduleForUser(BaseModel):

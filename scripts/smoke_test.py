@@ -17,7 +17,15 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from backend.core.auth import get_password_hash
 from backend.db import SessionLocal
-from backend.models import CollectionPeriod, ScheduleEntry, ScheduleTemplate, User, UserRole, VerificationToken
+from backend.models import (
+    CollectionPeriod,
+    ScheduleChangeRequest,
+    ScheduleEntry,
+    ScheduleTemplate,
+    User,
+    UserRole,
+    VerificationToken,
+)
 
 BASE_URL = os.getenv("SMOKE_BASE_URL", "http://localhost:8000").rstrip("/")
 REQUEST_TIMEOUT = float(os.getenv("SMOKE_TIMEOUT_SECONDS", "20"))
@@ -154,6 +162,9 @@ def cleanup_test_data(emails: list[str], alliance: str) -> None:
                 synchronize_session=False
             )
             session.query(ScheduleTemplate).filter(ScheduleTemplate.user_id.in_(user_ids)).delete(
+                synchronize_session=False
+            )
+            session.query(ScheduleChangeRequest).filter(ScheduleChangeRequest.user_id.in_(user_ids)).delete(
                 synchronize_session=False
             )
             session.query(VerificationToken).filter(VerificationToken.user_id.in_(user_ids)).delete(
@@ -316,7 +327,7 @@ def main() -> int:
         )
         client.request_json("POST", f"/periods/{manual_period['id']}/close", token=manager_token)
 
-        log("creating an active week period from template")
+        log("creating an active week period from template for normal save flow")
         active_start = next_monday(today) + timedelta(days=14)
         active_deadline = datetime.combine(today + timedelta(days=13), dt_time(hour=18), tzinfo=timezone.utc)
         period_templates = client.request_json("GET", "/periods/templates", token=manager_token)
@@ -370,13 +381,17 @@ def main() -> int:
         expect(any(item["id"] == schedule_template["id"] for item in template_list), "template list should include new template")
         client.request_json("DELETE", f"/templates/{schedule_template['id']}", token=employee_token)
 
-        log("submitting schedule and checking hours and violations")
+        log("saving schedule before deadline and checking autosave state")
         schedule_payload = {"days": build_schedule_days(active_period["period_start"])}
         updated_schedule = client.request_json("PUT", "/schedules/me", token=employee_token, json_body=schedule_payload)
         expect(len(updated_schedule) == 7, "schedule update should store 7 days")
 
         my_schedule = client.request_json("GET", "/schedules/me", token=employee_token)
         expect(len(my_schedule) == 7, "employee schedule should return 7 days")
+
+        my_state = client.request_json("GET", "/schedules/me/state", token=employee_token)
+        expect(len(my_state["days"]) == 7, "schedule state should return saved days")
+        expect(my_state["last_saved_at"] is not None, "schedule state should expose autosave timestamp")
 
         my_summary = client.request_json("GET", "/schedules/me/summary", token=employee_token)
         expect(my_summary["period_total_hours"] == 56.0, "7x8h schedule should total 56 hours")
@@ -413,6 +428,130 @@ def main() -> int:
         export_bytes = client.request_binary("GET", "/export/schedule", token=manager_token)
         expect(len(export_bytes) > 1024, "exported xlsx should not be empty")
         expect(export_bytes[:2] == b"PK", "xlsx should be a zip-based workbook")
+
+        log("switching to expired active period for post-deadline review flow")
+        client.request_json("POST", f"/periods/{active_period['id']}/close", token=manager_token)
+        expired_start = next_monday(today) - timedelta(days=7)
+        expired_deadline = datetime.combine(today - timedelta(days=1), dt_time(hour=18), tzinfo=timezone.utc)
+        expired_period = client.request_json(
+            "POST",
+            "/periods/from-template",
+            token=manager_token,
+            json_body={
+                "template_type": "week",
+                "period_start": expired_start.isoformat(),
+                "deadline": expired_deadline.isoformat().replace("+00:00", "Z"),
+            },
+        )
+        expect(expired_period["id"] != active_period["id"], "expired review period should be a new period")
+
+        log("ensuring direct save is blocked after deadline")
+        try:
+            client.request_json("PUT", "/schedules/me", token=employee_token, json_body=schedule_payload)
+            raise SmokeFailure("schedule update after deadline should be blocked")
+        except SmokeFailure as exc:
+            expect("PUT /schedules/me failed with 403" in str(exc), "post-deadline save should return 403")
+
+        log("creating one post-deadline schedule review request")
+        change_request_payload = {
+            "employee_comment": "Need to fix late schedule after outage",
+            "days": build_schedule_days(expired_period["period_start"]),
+        }
+        change_request = client.request_json(
+            "POST",
+            "/schedules/change-request",
+            token=employee_token,
+            json_body=change_request_payload,
+        )
+        expect(change_request["status"] == "pending", "new schedule change request should start as pending")
+
+        my_change_request = client.request_json("GET", "/schedules/change-request/me", token=employee_token)
+        expect(my_change_request["id"] == change_request["id"], "employee should see their own active change request")
+
+        log("ensuring a second request in the same period is rejected")
+        try:
+            client.request_json(
+                "POST",
+                "/schedules/change-request",
+                token=employee_token,
+                json_body=change_request_payload,
+            )
+            raise SmokeFailure("second schedule change request should be blocked")
+        except SmokeFailure as exc:
+            expect("POST /schedules/change-request failed with 400" in str(exc), "second request should return 400")
+
+        pending_change_requests = client.request_json(
+            "GET",
+            "/manager/schedule-change-requests/pending",
+            token=manager_token,
+        )
+        expect(
+            any(item["id"] == change_request["id"] for item in pending_change_requests),
+            "manager pending queue should include employee change request",
+        )
+
+        dashboard_after_request = client.request_json("GET", "/manager/dashboard", token=manager_token)
+        expect(
+            dashboard_after_request["pending_schedule_change_requests_count"] >= 1,
+            "dashboard should include pending schedule change requests count",
+        )
+
+        log("approving the post-deadline schedule review request")
+        approved_request = client.request_json(
+            "PUT",
+            f"/manager/schedule-change-requests/{change_request['id']}/approve",
+            token=manager_token,
+            json_body={"manager_comment": "Approved after review"},
+        )
+        expect(approved_request["status"] == "approved", "manager approve should update request status")
+
+        pending_change_requests_after_approve = client.request_json(
+            "GET",
+            "/manager/schedule-change-requests/pending",
+            token=manager_token,
+        )
+        expect(
+            all(item["id"] != change_request["id"] for item in pending_change_requests_after_approve),
+            "approved request should disappear from pending queue",
+        )
+
+        approved_schedule = client.request_json("GET", "/schedules/me", token=employee_token)
+        expect(len(approved_schedule) == 7, "approved request should replace employee schedule in expired period")
+
+        log("creating and rejecting a second employee request in another expired period")
+        client.request_json("POST", f"/periods/{expired_period['id']}/close", token=manager_token)
+        rejected_period_start = expired_start - timedelta(days=7)
+        rejected_deadline = datetime.combine(today - timedelta(days=2), dt_time(hour=18), tzinfo=timezone.utc)
+        rejected_period = client.request_json(
+            "POST",
+            "/periods/from-template",
+            token=manager_token,
+            json_body={
+                "template_type": "week",
+                "period_start": rejected_period_start.isoformat(),
+                "deadline": rejected_deadline.isoformat().replace("+00:00", "Z"),
+            },
+        )
+        rejected_days = build_schedule_days(rejected_period["period_start"])
+        rejected_request = client.request_json(
+            "POST",
+            "/schedules/change-request",
+            token=employee_token,
+            json_body={
+                "employee_comment": "This one should be rejected",
+                "days": rejected_days,
+            },
+        )
+        rejected_response = client.request_json(
+            "PUT",
+            f"/manager/schedule-change-requests/{rejected_request['id']}/reject",
+            token=manager_token,
+            json_body={"manager_comment": "Rejected in smoke test"},
+        )
+        expect(rejected_response["status"] == "rejected", "manager reject should update request status")
+
+        my_rejected_request = client.request_json("GET", "/schedules/change-request/me", token=employee_token)
+        expect(my_rejected_request["status"] == "rejected", "employee should see rejected request status")
 
         log("smoke test passed")
         return 0

@@ -136,7 +136,7 @@ Employee flow:
 Manager flow:
 
 1. Open queue from `GET /manager/schedule-change-requests/pending`
-2. Review proposed days and employee comment
+2. Review `current_days`, `proposed_days`, `changed_days`, and employee comment
 3. Approve with `PUT /manager/schedule-change-requests/{id}/approve`
 4. Reject with `PUT /manager/schedule-change-requests/{id}/reject`
 

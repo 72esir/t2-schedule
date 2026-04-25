@@ -601,6 +601,10 @@ Notes:
 ### GET `/manager/schedule-change-requests/pending`
 
 Returns pending post-deadline schedule review requests for the current manager alliance.
+Each item contains:
+- `current_days` - current saved schedule in the period
+- `proposed_days` - employee proposed replacement schedule
+- `changed_days` - dates where current and proposed schedule differ
 
 Auth required: yes
 Roles: `manager`
