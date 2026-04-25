@@ -61,6 +61,8 @@ Important:
 - Hours summary by day/week/period
 - Validation warnings for weekly hours and work streak
 - Personal streak widget via `GET /auth/me/streak`
+- Suggested template prompt via `GET /templates/suggested/current`
+- Apply suggested template via `POST /templates/suggested/current/apply`
 
 ## Required manager screens
 
