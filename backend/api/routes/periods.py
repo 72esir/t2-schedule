@@ -13,6 +13,11 @@ from backend.schemas import CollectionPeriodCreate, CollectionPeriodOut
 router = APIRouter(prefix="/periods", tags=["periods"])
 
 
+def require_manager(user: User) -> None:
+    if user.role != UserRole.MANAGER:
+        raise HTTPException(status_code=403, detail="Требуются права менеджера")
+
+
 @router.get("/current", response_model=Optional[CollectionPeriodOut])
 def get_current_period(
     current_user: User = Depends(get_current_active_user),
@@ -35,8 +40,7 @@ def create_period(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    if current_user.role not in (UserRole.ADMIN, UserRole.MANAGER):
-        raise HTTPException(status_code=403, detail="Недостаточно прав")
+    require_manager(current_user)
 
     if not current_user.alliance:
         raise HTTPException(status_code=400, detail="У пользователя не указан альянс")
@@ -65,14 +69,12 @@ def close_period(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    if current_user.role not in (UserRole.ADMIN, UserRole.MANAGER):
-        raise HTTPException(status_code=403, detail="Недостаточно прав")
+    require_manager(current_user)
 
     period = db.query(CollectionPeriod).filter(CollectionPeriod.id == period_id).first()
     if not period:
         raise HTTPException(status_code=404, detail="Период не найден")
-
-    if current_user.role == UserRole.MANAGER and period.alliance != current_user.alliance:
+    if period.alliance != current_user.alliance:
         raise HTTPException(status_code=403, detail="Нет доступа к этому периоду")
 
     period.is_open = False
@@ -87,8 +89,7 @@ def get_current_period_stats(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    if current_user.role not in (UserRole.ADMIN, UserRole.MANAGER):
-        raise HTTPException(status_code=403, detail="Недостаточно прав")
+    require_manager(current_user)
 
     period = (
         db.query(CollectionPeriod)
@@ -123,8 +124,7 @@ def get_current_period_submissions(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    if current_user.role not in (UserRole.ADMIN, UserRole.MANAGER):
-        raise HTTPException(status_code=403, detail="Недостаточно прав")
+    require_manager(current_user)
 
     period = (
         db.query(CollectionPeriod)
@@ -169,8 +169,7 @@ def get_periods_history(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    if current_user.role not in (UserRole.ADMIN, UserRole.MANAGER):
-        raise HTTPException(status_code=403, detail="Недостаточно прав")
+    require_manager(current_user)
 
     return (
         db.query(CollectionPeriod)
@@ -178,4 +177,3 @@ def get_periods_history(
         .order_by(CollectionPeriod.created_at.desc())
         .all()
     )
-

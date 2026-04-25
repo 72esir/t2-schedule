@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.api.routes.admin import router as admin_router
 from backend.api.routes.auth import router as auth_router
 from backend.api.routes.export import router as export_router
+from backend.api.routes.manager import router as manager_router
 from backend.api.routes.periods import router as periods_router
 from backend.api.routes.schedule import router as schedule_router
 from backend.api.routes.templates import router as templates_router
@@ -34,7 +34,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(schedule_router)
     app.include_router(periods_router)
-    app.include_router(admin_router)
+    app.include_router(manager_router)
     app.include_router(export_router)
     app.include_router(templates_router)
 

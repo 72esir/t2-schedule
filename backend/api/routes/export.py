@@ -151,7 +151,7 @@ def export_schedule(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    if current_user.role not in (UserRole.ADMIN, UserRole.MANAGER):
+    if current_user.role != UserRole.MANAGER:
         raise HTTPException(status_code=403, detail="Недостаточно прав")
 
     if period_id:
@@ -215,4 +215,3 @@ def export_schedule(
 def cleanup():
     if os.path.exists("temp_schedule.xlsx"):
         os.remove("temp_schedule.xlsx")
-
