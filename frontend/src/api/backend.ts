@@ -193,8 +193,12 @@ export const managerApi = {
   },
 
   async verifyUser(userId: number): Promise<User> {
-    const response = await apiClient.put<User>(`/manager/users/${userId}/verify`)
+    const response = await apiClient.put<User>(`/manager/users/${userId}/verify`, {})
     return response.data
+  },
+
+  async rejectUser(userId: number): Promise<void> {
+    await apiClient.delete(`/manager/users/${userId}/reject`)
   },
 
   async moderateVacationDays(userId: number, payload: VacationDaysModerationPayload): Promise<User> {

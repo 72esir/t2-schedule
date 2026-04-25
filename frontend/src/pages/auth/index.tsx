@@ -230,14 +230,16 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
                       autoComplete="email"
                       placeholder="name@company.ru"
                       onChange={setRegisterEmail}
+                      required
                     />
                     <TextField
                       label="Пароль"
                       type="password"
                       value={registerPassword}
                       autoComplete="new-password"
-                      placeholder="Не длиннее 72 байт"
+                      placeholder="Придумайте пароль"
                       onChange={setRegisterPassword}
+                      required
                     />
                   </div>
 
@@ -246,6 +248,7 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
                     value={fullName}
                     placeholder="Иван Иванов"
                     onChange={setFullName}
+                    required
                   />
                   <div className="grid gap-4 sm:grid-cols-2">
                     <TextField
@@ -253,6 +256,7 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
                       value={alliance}
                       placeholder="Alliance 1"
                       onChange={setAlliance}
+                      required
                     />
                     <TextField
                       label="Дней отпуска"
@@ -262,6 +266,7 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
                       min={0}
                       max={365}
                       onChange={setVacationDays}
+                      required
                     />
                   </div>
 
@@ -299,6 +304,7 @@ interface TextFieldProps {
   autoComplete?: string
   min?: number
   max?: number
+  required?: boolean
 }
 
 function TextField({
@@ -310,11 +316,13 @@ function TextField({
   autoComplete,
   min,
   max,
+  required = false,
 }: TextFieldProps) {
   return (
     <label className="mb-4 block">
       <span className="mb-2 block text-sm font-bold text-black/65">
         {label}
+        {required && <span className="text-[#ff3495]"> *</span>}
       </span>
       <input
         value={value}
@@ -323,6 +331,7 @@ function TextField({
         min={min}
         max={max}
         autoComplete={autoComplete}
+        required={required}
         className="h-14 w-full rounded-md border border-black/10 bg-[#f7f7f8] px-4 text-base font-medium outline-none transition placeholder:text-black/35 focus:border-[#ff3495] focus:bg-white focus:ring-4 focus:ring-[#ff3495]/15"
         placeholder={placeholder}
       />

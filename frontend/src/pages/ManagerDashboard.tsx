@@ -27,6 +27,7 @@ import {
   useApproveChangeRequestMutation,
   useRejectChangeRequestMutation,
   useVerifyUserMutation,
+  useRejectUserMutation,
 } from '../api/queries'
 import type {
   PeriodTemplate,
@@ -82,6 +83,7 @@ export default function ManagerDashboard({
   const createPeriodMutation = useCreatePeriodFromTemplateMutation()
   const closePeriodMutation = useClosePeriodMutation()
   const verifyUserMutation = useVerifyUserMutation()
+  const rejectUserMutation = useRejectUserMutation()
   const moderateVacationMutation = useModerateVacationDaysMutation()
   const exportScheduleMutation = useExportScheduleMutation()
   const approveChangeRequestMutation = useApproveChangeRequestMutation()
@@ -132,6 +134,17 @@ export default function ManagerDashboard({
     setNotice('')
     verifyUserMutation.mutate(userId, {
       onSuccess: () => setNotice('Сотрудник подтверждён.'),
+      onError: (error) => setNotice(getApiErrorMessage(error)),
+    })
+  }
+
+  function handleRejectUser(userId: number) {
+    if (!window.confirm('Вы уверены, что хотите отклонить и удалить данного сотрудника?')) {
+      return
+    }
+    setNotice('')
+    rejectUserMutation.mutate(userId, {
+      onSuccess: () => setNotice('Заявка на регистрацию отклонена.'),
       onError: (error) => setNotice(getApiErrorMessage(error)),
     })
   }
@@ -319,30 +332,54 @@ export default function ManagerDashboard({
             <Panel title="Создание периода">
               <form onSubmit={handleCreatePeriod} className="space-y-4">
                 <div className="grid gap-2 sm:grid-cols-4">
-                  {templates.map((template) => (
-                    <button
-                      key={template.type}
-                      type="button"
-                      aria-pressed={templateType === template.type}
-                      onClick={() => setTemplateType(template.type)}
-                      className={`min-h-24 rounded-lg border p-3 text-left transition ${templateType === template.type
-                        ? 'border-black bg-black text-white'
-                        : 'border-black/10 bg-white text-black hover:border-black/35'
-                        }`}
-                    >
-                      <span className="block text-sm font-black uppercase">
-                        {template.label}
-                      </span>
-                      <span
-                        className={`mt-2 block text-xs font-bold ${templateType === template.type
-                          ? 'text-white/60'
-                          : 'text-black/45'
+                  {templates.map((template) => {
+                    const translations: Record<string, { label: string; description: string }> = {
+                      week: {
+                        label: '1 НЕДЕЛЯ',
+                        description: 'Создает 7-дневный период, начиная с даты начала.',
+                      },
+                      two_weeks: {
+                        label: '2 НЕДЕЛИ',
+                        description: 'Создает 14-дневный период, начиная с даты начала.',
+                      },
+                      month: {
+                        label: 'КАЛЕНДАРНЫЙ МЕСЯЦ',
+                        description: 'Создает период с даты начала до последнего дня этого месяца.',
+                      },
+                      custom: {
+                        label: 'СВОЙ ДИАПАЗОН',
+                        description: 'Создает период с указанными датами начала и конца.',
+                      },
+                    }
+
+                    const localizedLabel = translations[template.type]?.label ?? template.label
+                    const localizedDesc = translations[template.type]?.description ?? template.description
+
+                    return (
+                      <button
+                        key={template.type}
+                        type="button"
+                        aria-pressed={templateType === template.type}
+                        onClick={() => setTemplateType(template.type)}
+                        className={`min-h-24 rounded-lg border p-3 text-left transition ${templateType === template.type
+                          ? 'border-black bg-black text-white'
+                          : 'border-black/10 bg-white text-black hover:border-black/35'
                           }`}
                       >
-                        {template.description}
-                      </span>
-                    </button>
-                  ))}
+                        <span className="block text-sm font-black uppercase">
+                          {localizedLabel}
+                        </span>
+                        <span
+                          className={`mt-2 block text-xs font-bold ${templateType === template.type
+                            ? 'text-white/60'
+                            : 'text-black/45'
+                            }`}
+                        >
+                          {localizedDesc}
+                        </span>
+                      </button>
+                    )
+                  })}
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-3">
@@ -431,8 +468,9 @@ export default function ManagerDashboard({
                 users={pendingVerificationQuery.data ?? []}
                 emptyText="Нет сотрудников на подтверждение."
                 actionLabel="Подтвердить"
-                actionPending={verifyUserMutation.isPending}
+                actionPending={verifyUserMutation.isPending || rejectUserMutation.isPending}
                 onAction={(employee) => handleVerifyUser(employee.id)}
+                onReject={(employee) => handleRejectUser(employee.id)}
               />
             </Panel>
 
@@ -549,6 +587,7 @@ interface UserQueueProps {
   actionLabel: string
   actionPending: boolean
   onAction: (user: User) => void
+  onReject?: (user: User) => void
 }
 
 function UserQueue({
@@ -557,6 +596,7 @@ function UserQueue({
   actionLabel,
   actionPending,
   onAction,
+  onReject,
 }: UserQueueProps) {
   if (!users.length) {
     return <EmptyState Icon={UserCheck} title={emptyText} text="Очередь пуста." />
@@ -570,19 +610,32 @@ function UserQueue({
           className="grid gap-3 rounded-lg border border-black/10 bg-[#f7f7f8] p-3 sm:grid-cols-[1fr_auto] sm:items-center"
         >
           <UserSummary user={employee} />
-          <button
-            type="button"
-            disabled={actionPending}
-            onClick={() => onAction(employee)}
-            className="inline-flex h-10 items-center justify-center rounded-md bg-black px-4 text-xs font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/15"
-          >
-            {actionLabel}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={actionPending}
+              onClick={() => onAction(employee)}
+              className="inline-flex h-10 items-center justify-center rounded-md bg-black px-4 text-xs font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/15"
+            >
+              {actionLabel}
+            </button>
+            {onReject && (
+              <button
+                type="button"
+                disabled={actionPending}
+                onClick={() => onReject(employee)}
+                className="inline-flex h-10 items-center justify-center rounded-md border border-[#ff3495]/35 bg-[#ff3495]/10 px-4 text-xs font-black uppercase text-[#ff3495] transition hover:border-[#ff3495] disabled:cursor-not-allowed disabled:text-black/35"
+              >
+                Отклонить
+              </button>
+            )}
+          </div>
         </div>
       ))}
     </div>
   )
 }
+
 
 interface VacationQueueProps {
   users: User[]

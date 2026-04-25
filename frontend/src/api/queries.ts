@@ -281,6 +281,23 @@ export function useVerifyUserMutation() {
   })
 }
 
+export function useRejectUserMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (userId: number) => managerApi.rejectUser(userId),
+    onSuccess: () => {
+      invalidateMany(queryClient, [
+        queryKeys.pendingVerificationUsers,
+        queryKeys.managerUsers,
+        queryKeys.managerDashboard,
+        queryKeys.periodStats,
+        queryKeys.periodSubmissions,
+      ])
+    },
+  })
+}
+
 export function useModerateVacationDaysMutation() {
   const queryClient = useQueryClient()
 
