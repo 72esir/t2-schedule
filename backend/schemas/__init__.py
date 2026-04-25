@@ -1,9 +1,9 @@
 from datetime import date, datetime
 from typing import Dict, Optional
 
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
-from models import UserRole
+from backend.models import UserRole
 
 
 class Token(BaseModel):
@@ -30,11 +30,12 @@ class UserCreate(UserBase):
     email: EmailStr
     password: str
 
-    @validator('password')
-    def check_password_length(cls, v):
-        if len(v.encode('utf-8')) > 72:
-            raise ValueError('Password too long, must be <= 72 bytes')
-        return v
+    @field_validator("password")
+    @classmethod
+    def check_password_length(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Password too long, must be <= 72 bytes")
+        return value
 
 
 class UserOut(UserBase):
@@ -61,7 +62,6 @@ class ScheduleDayPayload(BaseModel):
 
 
 class ScheduleBulkUpdate(BaseModel):
-    # Map of "YYYY-MM-DD" -> complex payload for a day
     days: Dict[date, ScheduleDayPayload]
 
 
