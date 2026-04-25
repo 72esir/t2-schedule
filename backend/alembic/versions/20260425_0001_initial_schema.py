@@ -19,19 +19,21 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-user_role_enum = sa.Enum("manager", "user", name="userrole")
-vacation_days_status_enum = sa.Enum(
+user_role_enum = postgresql.ENUM("manager", "user", name="userrole", create_type=False)
+vacation_days_status_enum = postgresql.ENUM(
     "pending",
     "approved",
     "rejected",
     "adjusted",
     name="vacationdaysstatus",
+    create_type=False,
 )
-schedule_change_request_status_enum = sa.Enum(
+schedule_change_request_status_enum = postgresql.ENUM(
     "pending",
     "approved",
     "rejected",
     name="schedulechangerequeststatus",
+    create_type=False,
 )
 
 
