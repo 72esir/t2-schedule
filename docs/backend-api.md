@@ -320,6 +320,57 @@ Returns calculated hour summary for one employee in manager review mode.
 Auth required: yes
 Roles: `manager`
 
+### GET `/schedules/me/validation`
+
+Returns business-rule validation for current user's active period.
+
+Auth required: yes
+Role: verified user
+
+Rules currently checked:
+
+- target `40` hours per week
+- not more than `6` work days in a row
+
+Response:
+
+```json
+{
+  "is_valid": false,
+  "violations": [
+    {
+      "code": "WEEKLY_HOURS_UNDER",
+      "level": "warning",
+      "message": "Недобор часов за неделю, начиная с 2026-04-27",
+      "context": {
+        "week_start": "2026-04-27",
+        "actual_hours": 36.0,
+        "required_hours": 40,
+        "difference": 4.0
+      }
+    }
+  ],
+  "summary": {
+    "daily_hours": {
+      "2026-05-01": 8.0
+    },
+    "weekly_hours": {
+      "2026-04-27": 36.0
+    },
+    "period_total_hours": 36.0,
+    "vacation_days_count": 0,
+    "max_work_streak": 4
+  }
+}
+```
+
+### GET `/schedules/by-user/{user_id}/validation`
+
+Returns business-rule validation for one employee in manager review mode.
+
+Auth required: yes
+Roles: `manager`
+
 ## Manager endpoints
 
 ### GET `/manager/users`

@@ -54,6 +54,7 @@ Important:
 - Read-only empty state if no active period exists
 - Read-only state after deadline
 - Hours summary by day/week/period
+- Validation warnings for weekly hours and work streak
 
 ## Required manager screens
 
@@ -66,6 +67,7 @@ Important:
 - Submission status list
 - Employee details and schedule review
 - Employee hour summary
+- Employee validation warnings
 - Pending vacation moderation queue
 - Vacation moderation controls
 

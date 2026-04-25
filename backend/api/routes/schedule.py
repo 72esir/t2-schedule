@@ -7,8 +7,14 @@ from sqlalchemy.orm import Session
 from backend.core import get_current_verified_user, require_role
 from backend.db import get_db
 from backend.models import CollectionPeriod, ScheduleEntry, User, UserRole
-from backend.schemas import ScheduleBulkUpdate, ScheduleDayPayload, ScheduleForUser, ScheduleSummary
-from backend.services import build_schedule_summary
+from backend.schemas import (
+    ScheduleBulkUpdate,
+    ScheduleDayPayload,
+    ScheduleForUser,
+    ScheduleSummary,
+    ScheduleValidationResult,
+)
+from backend.services import build_schedule_summary, build_schedule_validation
 
 router = APIRouter(prefix="/schedules", tags=["schedules"])
 
@@ -174,3 +180,57 @@ def get_schedule_summary_for_user(
         ScheduleEntry.period_id == current_period.id,
     ).all()
     return ScheduleSummary(**build_schedule_summary(entries))
+
+
+@router.get("/me/validation", response_model=ScheduleValidationResult)
+def get_my_schedule_validation(
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
+):
+    current_period = get_current_period(db, current_user.alliance)
+    if not current_period:
+        empty_summary = ScheduleSummary(
+            daily_hours={},
+            weekly_hours={},
+            period_total_hours=0,
+            vacation_days_count=0,
+            max_work_streak=0,
+        )
+        return ScheduleValidationResult(is_valid=True, violations=[], summary=empty_summary)
+
+    entries = db.query(ScheduleEntry).filter(
+        ScheduleEntry.user_id == current_user.id,
+        ScheduleEntry.period_id == current_period.id,
+    ).all()
+    return ScheduleValidationResult(**build_schedule_validation(entries))
+
+
+@router.get("/by-user/{user_id}/validation", response_model=ScheduleValidationResult)
+def get_schedule_validation_for_user(
+    user_id: int,
+    current_user: User = Depends(require_role(UserRole.MANAGER)),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    if user.alliance != current_user.alliance:
+        raise HTTPException(status_code=403, detail="Нет доступа к сотруднику из другого альянса")
+
+    current_period = get_current_period(db, user.alliance)
+    if not current_period:
+        empty_summary = ScheduleSummary(
+            daily_hours={},
+            weekly_hours={},
+            period_total_hours=0,
+            vacation_days_count=0,
+            max_work_streak=0,
+        )
+        return ScheduleValidationResult(is_valid=True, violations=[], summary=empty_summary)
+
+    entries = db.query(ScheduleEntry).filter(
+        ScheduleEntry.user_id == user.id,
+        ScheduleEntry.period_id == current_period.id,
+    ).all()
+    return ScheduleValidationResult(**build_schedule_validation(entries))

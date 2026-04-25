@@ -173,6 +173,19 @@ class ScheduleSummary(BaseModel):
     max_work_streak: int
 
 
+class ScheduleViolation(BaseModel):
+    code: str
+    level: str
+    message: str
+    context: dict
+
+
+class ScheduleValidationResult(BaseModel):
+    is_valid: bool
+    violations: list[ScheduleViolation]
+    summary: ScheduleSummary
+
+
 class CollectionPeriodOut(BaseModel):
     id: int
     alliance: str
