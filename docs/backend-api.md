@@ -316,6 +316,58 @@ Response:
 }
 ```
 
+### GET `/integrations/google/suggest-schedule`
+
+Builds deterministic suggested schedule from Google Calendar availability.
+
+Query params:
+
+- `period_id` optional
+- `calendar_id` optional, default `primary`
+
+Current heuristic:
+
+- all-day event -> `dayoff`
+- free window `>= 8h` -> `shift`
+- two free windows `>= 4h` each -> `split`
+- one shorter free window `>= 4h` -> shorter `shift`
+- otherwise -> `dayoff`
+
+Response:
+
+```json
+{
+  "period_id": 11,
+  "calendar_id": "primary",
+  "period_start": "2026-04-27",
+  "period_end": "2026-05-03",
+  "suggested_days_count": 5,
+  "days": {
+    "2026-04-27": {
+      "status": "shift",
+      "meta": {
+        "shiftStart": "10:00",
+        "shiftEnd": "18:00"
+      }
+    }
+  }
+}
+```
+
+### POST `/integrations/google/apply-suggestion`
+
+Applies deterministic Google Calendar suggestion to the employee schedule.
+
+Query params:
+
+- `period_id` optional
+- `calendar_id` optional, default `primary`
+
+Rules:
+
+- works only before period deadline
+- replaces current schedule for that period
+
 ### GET `/integrations/google/callback`
 
 Google OAuth callback endpoint.

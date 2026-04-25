@@ -412,3 +412,12 @@ class GoogleCalendarAvailabilityOut(BaseModel):
     period_end: date
     time_zone: Optional[str] = None
     days: Dict[date, GoogleCalendarAvailabilityDayOut] = Field(default_factory=dict)
+
+
+class GoogleCalendarSuggestedScheduleOut(BaseModel):
+    period_id: int
+    calendar_id: str
+    period_start: date
+    period_end: date
+    suggested_days_count: int
+    days: Dict[date, ScheduleDayPayload] = Field(default_factory=dict)

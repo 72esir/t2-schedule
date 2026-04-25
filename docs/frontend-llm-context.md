@@ -67,6 +67,8 @@ Important:
 - Google Calendar connect URL via `GET /integrations/google/connect`
 - Google Calendar list via `GET /integrations/google/calendars`
 - Google Calendar availability via `GET /integrations/google/availability`
+- Google Calendar schedule suggestion via `GET /integrations/google/suggest-schedule`
+- Google Calendar suggestion apply via `POST /integrations/google/apply-suggestion`
 - Google Calendar disconnect via `DELETE /integrations/google/disconnect`
 
 ## Required manager screens
@@ -200,7 +202,9 @@ Important:
 - but frontend can already:
   - choose a calendar
   - load busy intervals for current period
-  - show a preview of occupied days before schedule suggestion logic is added
+  - load deterministic suggested schedule
+  - preview it
+  - apply it to the current employee schedule
 
 ## API reference
 

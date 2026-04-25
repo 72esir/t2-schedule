@@ -22,7 +22,9 @@ from backend.schemas import (
     GoogleCalendarListItemOut,
     GoogleOAuthCallbackOut,
     GoogleOAuthConnectOut,
+    GoogleCalendarSuggestedScheduleOut,
 )
+from backend.models import ScheduleEntry
 
 router = APIRouter(prefix="/integrations/google", tags=["integrations"])
 
@@ -32,6 +34,10 @@ GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 GOOGLE_CALENDAR_LIST_URL = "https://www.googleapis.com/calendar/v3/users/me/calendarList"
 GOOGLE_CALENDAR_EVENTS_URL_TEMPLATE = "https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events"
 GOOGLE_STATE_TTL_MINUTES = 10
+WORKDAY_START_HOUR = 8
+WORKDAY_END_HOUR = 22
+TARGET_SHIFT_HOURS = 8
+MIN_SHIFT_HOURS = 4
 
 
 def _get_google_scopes() -> list[str]:
@@ -229,6 +235,212 @@ def _extract_busy_interval(event: dict) -> tuple[Optional[date], Optional[Google
     return start_dt.date(), GoogleCalendarBusyIntervalOut(start=start_dt, end=end_dt), False
 
 
+def _utc_day_window(day: date) -> tuple[datetime, datetime]:
+    start_dt = datetime.combine(day, time(hour=WORKDAY_START_HOUR), tzinfo=timezone.utc)
+    end_dt = datetime.combine(day, time(hour=WORKDAY_END_HOUR), tzinfo=timezone.utc)
+    return start_dt, end_dt
+
+
+def _clip_interval_to_day(
+    interval: GoogleCalendarBusyIntervalOut,
+    *,
+    day: date,
+) -> Optional[tuple[datetime, datetime]]:
+    day_start, day_end = _utc_day_window(day)
+    start = max(interval.start, day_start)
+    end = min(interval.end, day_end)
+    if end <= start:
+        return None
+    return start, end
+
+
+def _merge_intervals(intervals: list[tuple[datetime, datetime]]) -> list[tuple[datetime, datetime]]:
+    if not intervals:
+        return []
+    intervals.sort(key=lambda item: item[0])
+    merged: list[tuple[datetime, datetime]] = [intervals[0]]
+    for start, end in intervals[1:]:
+        prev_start, prev_end = merged[-1]
+        if start <= prev_end:
+            merged[-1] = (prev_start, max(prev_end, end))
+        else:
+            merged.append((start, end))
+    return merged
+
+
+def _build_free_windows(
+    *,
+    day: date,
+    busy_intervals: list[GoogleCalendarBusyIntervalOut],
+) -> list[tuple[datetime, datetime]]:
+    clipped = []
+    for interval in busy_intervals:
+        clipped_interval = _clip_interval_to_day(interval, day=day)
+        if clipped_interval:
+            clipped.append(clipped_interval)
+    merged_busy = _merge_intervals(clipped)
+
+    day_start, day_end = _utc_day_window(day)
+    if not merged_busy:
+        return [(day_start, day_end)]
+
+    free_windows: list[tuple[datetime, datetime]] = []
+    cursor = day_start
+    for busy_start, busy_end in merged_busy:
+        if busy_start > cursor:
+            free_windows.append((cursor, busy_start))
+        cursor = max(cursor, busy_end)
+    if cursor < day_end:
+        free_windows.append((cursor, day_end))
+    return free_windows
+
+
+def _minutes_between(start: datetime, end: datetime) -> int:
+    return max(int((end - start).total_seconds() // 60), 0)
+
+
+def _minutes_to_hhmm(value: datetime) -> str:
+    return value.astimezone(timezone.utc).strftime("%H:%M")
+
+
+def _slice_window(start: datetime, end: datetime, minutes: int) -> tuple[datetime, datetime]:
+    available = _minutes_between(start, end)
+    actual = min(available, minutes)
+    return start, start + timedelta(minutes=actual)
+
+
+def _suggest_day_from_availability(
+    *,
+    day: date,
+    availability: GoogleCalendarAvailabilityDayOut,
+) -> dict:
+    if availability.all_day:
+        return {"status": "dayoff", "meta": None}
+
+    free_windows = _build_free_windows(day=day, busy_intervals=availability.busy_intervals)
+    long_windows = [
+        window
+        for window in free_windows
+        if _minutes_between(window[0], window[1]) >= MIN_SHIFT_HOURS * 60
+    ]
+    if not long_windows:
+        return {"status": "dayoff", "meta": None}
+
+    single_shift_window = next(
+        (window for window in long_windows if _minutes_between(window[0], window[1]) >= TARGET_SHIFT_HOURS * 60),
+        None,
+    )
+    if single_shift_window:
+        shift_start, shift_end = _slice_window(single_shift_window[0], single_shift_window[1], TARGET_SHIFT_HOURS * 60)
+        return {
+            "status": "shift",
+            "meta": {
+                "shiftStart": _minutes_to_hhmm(shift_start),
+                "shiftEnd": _minutes_to_hhmm(shift_end),
+            },
+        }
+
+    if len(long_windows) >= 2:
+        first_start, first_end = _slice_window(long_windows[0][0], long_windows[0][1], MIN_SHIFT_HOURS * 60)
+        second_start, second_end = _slice_window(long_windows[1][0], long_windows[1][1], MIN_SHIFT_HOURS * 60)
+        if _minutes_between(first_start, first_end) >= MIN_SHIFT_HOURS * 60 and _minutes_between(second_start, second_end) >= MIN_SHIFT_HOURS * 60:
+            return {
+                "status": "split",
+                "meta": {
+                    "splitStart1": _minutes_to_hhmm(first_start),
+                    "splitEnd1": _minutes_to_hhmm(first_end),
+                    "splitStart2": _minutes_to_hhmm(second_start),
+                    "splitEnd2": _minutes_to_hhmm(second_end),
+                },
+            }
+
+    best_window = max(long_windows, key=lambda item: _minutes_between(item[0], item[1]))
+    shift_minutes = min(_minutes_between(best_window[0], best_window[1]), TARGET_SHIFT_HOURS * 60)
+    shift_start, shift_end = _slice_window(best_window[0], best_window[1], shift_minutes)
+    return {
+        "status": "shift",
+        "meta": {
+            "shiftStart": _minutes_to_hhmm(shift_start),
+            "shiftEnd": _minutes_to_hhmm(shift_end),
+        },
+    }
+
+
+def _build_availability_for_period(
+    *,
+    db: Session,
+    connection: GoogleCalendarConnection,
+    period: CollectionPeriod,
+    calendar_id: str,
+) -> GoogleCalendarAvailabilityOut:
+    time_min = datetime.combine(period.period_start, time.min, tzinfo=timezone.utc)
+    time_max = datetime.combine(period.period_end + timedelta(days=1), time.min, tzinfo=timezone.utc)
+    query = urlencode(
+        {
+            "singleEvents": "true",
+            "orderBy": "startTime",
+            "timeMin": time_min.isoformat().replace("+00:00", "Z"),
+            "timeMax": time_max.isoformat().replace("+00:00", "Z"),
+            "maxResults": 2500,
+        }
+    )
+    url = GOOGLE_CALENDAR_EVENTS_URL_TEMPLATE.format(calendar_id=quote(calendar_id, safe="")) + f"?{query}"
+    payload = _authorized_google_get(
+        db=db,
+        connection=connection,
+        url=url,
+    )
+
+    days: dict[date, GoogleCalendarAvailabilityDayOut] = {}
+    for offset in range((period.period_end - period.period_start).days + 1):
+        day = period.period_start + timedelta(days=offset)
+        days[day] = GoogleCalendarAvailabilityDayOut()
+
+    for event in payload.get("items", []):
+        day, interval, is_all_day = _extract_busy_interval(event)
+        if day is None or day not in days:
+            continue
+
+        day_state = days[day]
+        day_state.event_count += 1
+        if is_all_day:
+            day_state.all_day = True
+            continue
+        if interval:
+            day_state.busy_intervals.append(interval)
+
+    for day_state in days.values():
+        day_state.busy_intervals.sort(key=lambda item: item.start)
+
+    return GoogleCalendarAvailabilityOut(
+        period_id=period.id,
+        calendar_id=calendar_id,
+        period_start=period.period_start,
+        period_end=period.period_end,
+        time_zone=payload.get("timeZone"),
+        days=days,
+    )
+
+
+def _build_suggested_schedule_from_availability(
+    *,
+    availability: GoogleCalendarAvailabilityOut,
+) -> GoogleCalendarSuggestedScheduleOut:
+    suggested_days = {
+        day: _suggest_day_from_availability(day=day, availability=day_availability)
+        for day, day_availability in availability.days.items()
+    }
+    suggested_days_count = sum(1 for payload in suggested_days.values() if payload["status"] != "dayoff")
+    return GoogleCalendarSuggestedScheduleOut(
+        period_id=availability.period_id,
+        calendar_id=availability.calendar_id,
+        period_start=availability.period_start,
+        period_end=availability.period_end,
+        suggested_days_count=suggested_days_count,
+        days=suggested_days,
+    )
+
+
 def _redirect_or_json(*, success: bool, email: Optional[str] = None, error: Optional[str] = None):
     if success and settings.GOOGLE_OAUTH_SUCCESS_REDIRECT_URL:
         url = f"{settings.GOOGLE_OAUTH_SUCCESS_REDIRECT_URL}?google_calendar=connected"
@@ -320,54 +532,76 @@ def get_google_calendar_availability(
     _require_google_oauth_configured()
     connection = _get_connection_or_404(db=db, user_id=current_user.id)
     period = _get_period_for_user(db=db, current_user=current_user, period_id=period_id)
-
-    time_min = datetime.combine(period.period_start, time.min, tzinfo=timezone.utc)
-    time_max = datetime.combine(period.period_end + timedelta(days=1), time.min, tzinfo=timezone.utc)
-    query = urlencode(
-        {
-            "singleEvents": "true",
-            "orderBy": "startTime",
-            "timeMin": time_min.isoformat().replace("+00:00", "Z"),
-            "timeMax": time_max.isoformat().replace("+00:00", "Z"),
-            "maxResults": 2500,
-        }
-    )
-    url = GOOGLE_CALENDAR_EVENTS_URL_TEMPLATE.format(calendar_id=quote(calendar_id, safe="")) + f"?{query}"
-    payload = _authorized_google_get(
+    return _build_availability_for_period(
         db=db,
         connection=connection,
-        url=url,
-    )
-
-    days: dict[date, GoogleCalendarAvailabilityDayOut] = {}
-    for offset in range((period.period_end - period.period_start).days + 1):
-        day = period.period_start + timedelta(days=offset)
-        days[day] = GoogleCalendarAvailabilityDayOut()
-
-    for event in payload.get("items", []):
-        day, interval, is_all_day = _extract_busy_interval(event)
-        if day is None or day not in days:
-            continue
-
-        day_state = days[day]
-        day_state.event_count += 1
-        if is_all_day:
-            day_state.all_day = True
-            continue
-        if interval:
-            day_state.busy_intervals.append(interval)
-
-    for day_state in days.values():
-        day_state.busy_intervals.sort(key=lambda item: item.start)
-
-    return GoogleCalendarAvailabilityOut(
-        period_id=period.id,
+        period=period,
         calendar_id=calendar_id,
-        period_start=period.period_start,
-        period_end=period.period_end,
-        time_zone=payload.get("timeZone"),
-        days=days,
     )
+
+@router.get("/suggest-schedule", response_model=GoogleCalendarSuggestedScheduleOut)
+def suggest_schedule_from_google_calendar(
+    period_id: Optional[int] = Query(default=None),
+    calendar_id: str = Query(default="primary"),
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
+):
+    _require_google_oauth_configured()
+    connection = _get_connection_or_404(db=db, user_id=current_user.id)
+    period = _get_period_for_user(db=db, current_user=current_user, period_id=period_id)
+    availability = _build_availability_for_period(
+        db=db,
+        connection=connection,
+        period=period,
+        calendar_id=calendar_id,
+    )
+    return _build_suggested_schedule_from_availability(availability=availability)
+
+
+@router.post("/apply-suggestion", response_model=GoogleCalendarSuggestedScheduleOut)
+def apply_google_calendar_suggestion(
+    period_id: Optional[int] = Query(default=None),
+    calendar_id: str = Query(default="primary"),
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
+):
+    _require_google_oauth_configured()
+    connection = _get_connection_or_404(db=db, user_id=current_user.id)
+    period = _get_period_for_user(db=db, current_user=current_user, period_id=period_id)
+
+    now = datetime.now(timezone.utc)
+    deadline = period.deadline
+    if deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=timezone.utc)
+    if deadline < now:
+        raise HTTPException(status_code=403, detail="Cannot apply Google Calendar suggestion after deadline")
+
+    availability = _build_availability_for_period(
+        db=db,
+        connection=connection,
+        period=period,
+        calendar_id=calendar_id,
+    )
+    suggestion = _build_suggested_schedule_from_availability(availability=availability)
+
+    db.query(ScheduleEntry).filter(
+        ScheduleEntry.user_id == current_user.id,
+        ScheduleEntry.period_id == period.id,
+    ).delete()
+
+    for day, payload in suggestion.days.items():
+        db.add(
+            ScheduleEntry(
+                user_id=current_user.id,
+                period_id=period.id,
+                day=day,
+                status=payload.status,
+                meta=payload.meta.model_dump() if payload.meta is not None else None,
+            )
+        )
+
+    db.commit()
+    return suggestion
 
 
 @router.get("/callback", response_model=GoogleOAuthCallbackOut)
