@@ -30,6 +30,13 @@ class UserRole(str, enum.Enum):
     USER = "user"
 
 
+class VacationDaysStatus(str, enum.Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    ADJUSTED = "adjusted"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -45,6 +52,13 @@ class User(Base):
     alliance = Column(Text, nullable=True)
     category = Column(String(64), nullable=True)
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
+    vacation_days_declared = Column(Integer, nullable=True)
+    vacation_days_approved = Column(Integer, nullable=True)
+    vacation_days_status = Column(
+        Enum(VacationDaysStatus),
+        default=VacationDaysStatus.PENDING,
+        nullable=False,
+    )
 
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(
@@ -130,4 +144,3 @@ class CollectionPeriod(Base):
         onupdate=datetime.utcnow,
         nullable=False,
     )
-
