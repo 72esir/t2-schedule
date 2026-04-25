@@ -368,3 +368,18 @@ class SuggestedTemplateOut(BaseModel):
     match_count: int = 0
     source_period_ids: list[int] = Field(default_factory=list)
     days: Dict[date, ScheduleDayPayload] = Field(default_factory=dict)
+
+
+class GoogleCalendarConnectionStatusOut(BaseModel):
+    connected: bool
+    google_account_email: Optional[EmailStr] = None
+    scopes: list[str] = Field(default_factory=list)
+
+
+class GoogleOAuthConnectOut(BaseModel):
+    authorization_url: str
+
+
+class GoogleOAuthCallbackOut(BaseModel):
+    connected: bool
+    google_account_email: Optional[EmailStr] = None

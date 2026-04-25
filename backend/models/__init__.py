@@ -105,6 +105,12 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    google_calendar_connection = relationship(
+        "GoogleCalendarConnection",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 
 
 class VerificationToken(Base):
@@ -203,3 +209,25 @@ class ScheduleChangeRequest(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "period_id", name="uq_schedule_change_request_user_period"),
     )
+
+
+class GoogleCalendarConnection(Base):
+    __tablename__ = "google_calendar_connections"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    google_account_email = Column(String(255), nullable=True)
+    access_token = Column(Text, nullable=False)
+    refresh_token = Column(Text, nullable=True)
+    token_type = Column(String(64), nullable=True)
+    scope = Column(Text, nullable=True)
+    token_expires_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+    user = relationship("User", back_populates="google_calendar_connection")

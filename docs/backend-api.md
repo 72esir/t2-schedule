@@ -194,6 +194,94 @@ Request:
 }
 ```
 
+## Google Calendar integration
+
+These endpoints only manage connection to Google Calendar for now.
+They do not yet read events or generate schedules.
+
+Required env:
+
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI`
+
+Optional env:
+
+- `GOOGLE_OAUTH_SUCCESS_REDIRECT_URL`
+- `GOOGLE_OAUTH_ERROR_REDIRECT_URL`
+
+Recommended scope:
+
+```text
+openid email https://www.googleapis.com/auth/calendar.readonly
+```
+
+### GET `/integrations/google/status`
+
+Returns whether current verified employee already connected Google Calendar.
+
+Response when disconnected:
+
+```json
+{
+  "connected": false,
+  "google_account_email": null,
+  "scopes": []
+}
+```
+
+Response when connected:
+
+```json
+{
+  "connected": true,
+  "google_account_email": "employee@gmail.com",
+  "scopes": [
+    "openid",
+    "email",
+    "https://www.googleapis.com/auth/calendar.readonly"
+  ]
+}
+```
+
+### GET `/integrations/google/connect`
+
+Returns Google OAuth authorization URL for current verified employee.
+
+Response:
+
+```json
+{
+  "authorization_url": "https://accounts.google.com/o/oauth2/v2/auth?..."
+}
+```
+
+Frontend should redirect browser to this URL.
+
+### GET `/integrations/google/callback`
+
+Google OAuth callback endpoint.
+
+Behavior:
+
+- exchanges `code` for tokens
+- stores Google connection for the employee
+- if success/error redirect env vars are configured, redirects browser there
+- otherwise returns JSON response
+
+JSON success response:
+
+```json
+{
+  "connected": true,
+  "google_account_email": "employee@gmail.com"
+}
+```
+
+### DELETE `/integrations/google/disconnect`
+
+Deletes stored Google Calendar connection for current verified employee.
+
 ## Period endpoints
 
 ### GET `/periods/current`

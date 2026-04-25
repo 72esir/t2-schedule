@@ -63,6 +63,9 @@ Important:
 - Personal streak widget via `GET /auth/me/streak`
 - Suggested template prompt via `GET /templates/suggested/current`
 - Apply suggested template via `POST /templates/suggested/current/apply`
+- Google Calendar connection status via `GET /integrations/google/status`
+- Google Calendar connect URL via `GET /integrations/google/connect`
+- Google Calendar disconnect via `DELETE /integrations/google/disconnect`
 
 ## Required manager screens
 
@@ -166,6 +169,32 @@ Use `last_saved_at` to show:
 - `Saving...`
 - `Saved at 15:32`
 - `Save failed`
+
+## Google Calendar connection flow
+
+This is only the first integration layer.
+Backend currently supports:
+
+- checking whether Google Calendar is connected
+- getting OAuth authorization URL
+- handling OAuth callback
+- disconnecting Google Calendar
+
+Recommended frontend flow:
+
+1. On employee dashboard call `GET /integrations/google/status`
+2. If `connected=false`, show button `Connect Google Calendar`
+3. On click call `GET /integrations/google/connect`
+4. Redirect browser to returned `authorization_url`
+5. After successful OAuth callback, backend either:
+   - redirects to frontend success URL if configured in env
+   - or returns JSON if redirect envs are not configured
+6. After return to frontend refresh `GET /integrations/google/status`
+
+Important:
+
+- this does not yet suggest schedules from calendar events
+- this only prepares the connection layer needed for that feature
 
 ## API reference
 
