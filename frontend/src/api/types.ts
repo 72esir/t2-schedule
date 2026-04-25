@@ -210,3 +210,33 @@ export interface ExportedFile {
   blob: Blob
   filename: string
 }
+
+export interface ScheduleStatePayload {
+  days: BackendScheduleByDate
+  last_saved_at: string | null
+}
+
+export interface ScheduleChangeRequestPayload {
+  employee_comment?: string
+  days: BackendScheduleByDate
+}
+
+export interface PendingScheduleChangeRequest {
+  id: number
+  user_id: number
+  status: 'pending' | 'approved' | 'rejected'
+  employee_comment: string | null
+  manager_comment: string | null
+  current_days: BackendScheduleByDate
+  proposed_days: BackendScheduleByDate
+  changed_days: string[]
+  created_at: string
+  full_name?: string | null
+  email?: string | null
+  alliance?: string | null
+}
+
+export interface ScheduleChangeRequestManagerApproval {
+  manager_comment?: string
+}
+

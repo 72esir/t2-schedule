@@ -3,9 +3,11 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
+  FileQuestion,
   LogOut,
   RefreshCcw,
   Save,
+  Send,
   ShieldCheck,
 } from 'lucide-react'
 import {
@@ -23,10 +25,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { getApiErrorMessage } from '../api/client'
 import {
   useCurrentPeriodQuery,
+  useMyChangeRequestQuery,
   useMyScheduleQuery,
   useMyScheduleSummaryQuery,
   useMyScheduleValidationQuery,
   useUpdateMyScheduleMutation,
+  useCreateChangeRequestMutation,
 } from '../api/queries'
 import { backendScheduleToLocal, localScheduleToBackend } from '../api/scheduleMapper'
 import type { User } from '../api/types'
@@ -40,6 +44,7 @@ import {
   normalizeDateInput,
   toDateKey,
 } from '../utils/time-calculations'
+import t2Logo from '../assets/t2-logo.svg'
 
 interface WeekViewModel {
   id: string
@@ -75,7 +80,11 @@ export default function EmployeeDashboard({
   const validationQuery = useMyScheduleValidationQuery(
     user.is_verified && hasActivePeriod,
   )
+  const changeRequestQuery = useMyChangeRequestQuery(
+    user.is_verified && hasActivePeriod,
+  )
   const updateScheduleMutation = useUpdateMyScheduleMutation()
+  const createRequestMutation = useCreateChangeRequestMutation()
   const currentPeriod = useScheduleStore((state) => state.currentPeriod)
   const shiftsByDate = useScheduleStore((state) => state.shiftsByDate)
   const setCurrentPeriod = useScheduleStore((state) => state.setCurrentPeriod)
@@ -135,21 +144,48 @@ export default function EmployeeDashboard({
   const invalidIssues =
     backendValidation?.violations.length ??
     invalidWeeks + (periodRuleViolations.sixWorkingDaysInRow ? 1 : 0)
+  const [isRequestMode, setIsRequestMode] = useState(false)
+  const [requestComment, setRequestComment] = useState('')
+
+  const currentRequest = changeRequestQuery.data
   const canEditSchedule =
     user.is_verified &&
     hasActivePeriod &&
-    !deadlinePassed &&
+    !currentRequest &&
     !scheduleQuery.isPending
-  const canSubmit =
-    canEditSchedule &&
-    !updateScheduleMutation.isPending
+  const isPendingSubmit =
+    updateScheduleMutation.isPending || createRequestMutation.isPending
+  const canSubmit = canEditSchedule && !isPendingSubmit
 
   function handleSubmit() {
     if (!canSubmit) {
-      setSubmitNotice(
-        deadlinePassed
-          ? 'Дедлайн редактирования прошёл.'
-          : 'График сейчас нельзя сохранить.',
+      return
+    }
+
+    if (deadlinePassed && !isRequestMode) {
+      setIsRequestMode(true)
+      setSubmitNotice('Напишите комментарий к вашей заявке на изменение графика.')
+      return
+    }
+
+    if (deadlinePassed && isRequestMode) {
+      if (!requestComment.trim()) {
+        setSubmitNotice('Комментарий обязателен для заявки.')
+        return
+      }
+
+      createRequestMutation.mutate(
+        {
+          days: localScheduleToBackend(shiftsByDate).days,
+          employee_comment: requestComment.trim(),
+        },
+        {
+          onSuccess: () => {
+            setSubmitNotice('Заявка на изменение отправлена.')
+            setIsRequestMode(false)
+          },
+          onError: (error) => setSubmitNotice(getApiErrorMessage(error)),
+        },
       )
       return
     }
@@ -212,9 +248,7 @@ export default function EmployeeDashboard({
         <header className="grid gap-4 rounded-lg border border-black/10 bg-white px-4 py-4 shadow-sm lg:grid-cols-[1fr_auto] lg:items-center lg:px-6">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className="grid size-10 place-items-center rounded-md bg-black text-sm font-black text-white">
-                t<span className="text-[#ff3495]">2</span>
-              </span>
+              <img src={t2Logo} alt="t2" className="size-10 rounded-md" />
               <span className="rounded-md bg-[#a7fc00] px-3 py-2 text-xs font-black uppercase text-black">
                 График сотрудника
               </span>
@@ -248,9 +282,16 @@ export default function EmployeeDashboard({
                   canSubmit,
                   deadlinePassed,
                   invalidIssues,
-                  updateScheduleMutation.isPending,
+                  isPendingSubmit,
+                  currentRequest,
                 )}
-                tone={canSubmit && invalidIssues === 0 ? 'success' : 'warning'}
+                tone={
+                  currentRequest && currentRequest.status === 'pending'
+                    ? 'warning'
+                    : canSubmit && invalidIssues === 0
+                      ? 'success'
+                      : 'warning'
+                }
               />
             </div>
             <button
@@ -267,21 +308,51 @@ export default function EmployeeDashboard({
         <section className="min-h-0 flex-1 overflow-hidden rounded-lg border border-black/10 bg-white shadow-sm">
           <div className="flex h-full flex-col">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/10 px-4 py-3 lg:px-6">
-              <div>
+              <div className="flex-1">
                 <p className="text-xs font-black uppercase tracking-[0.12em] text-black/45">
                   Планирование
                 </p>
                 <p className="mt-1 text-sm font-bold text-black/65">
-                  {deadlinePassed
-                    ? 'Дедлайн прошёл, график открыт только для просмотра.'
-                    : 'Выберите день, чтобы изменить смену. Итоги обновятся сразу.'}
+                  {currentRequest
+                    ? 'Вы уже подали заявку на изменение графика в этом периоде.'
+                    : deadlinePassed
+                      ? 'Дедлайн прошёл. Вы можете подать одну заявку на изменение графика.'
+                      : 'Выберите день, чтобы изменить смену. Итоги обновятся сразу.'}
                 </p>
               </div>
-              <SubmitButton
-                canSubmit={canSubmit}
-                isPending={updateScheduleMutation.isPending}
-                onClick={handleSubmit}
-              />
+
+              {!currentRequest && isRequestMode && (
+                <div className="flex w-full items-center gap-2 sm:w-auto">
+                  <input
+                    value={requestComment}
+                    onChange={(e) => setRequestComment(e.target.value)}
+                    placeholder="Причина изменения..."
+                    className="h-12 w-full min-w-[240px] rounded-md border border-black/10 bg-[#f7f7f8] px-3 text-sm outline-none focus:border-[#ff3495] focus:bg-white focus:ring-4 focus:ring-[#ff3495]/15"
+                    disabled={isPendingSubmit}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsRequestMode(false)
+                      setSubmitNotice('')
+                    }}
+                    className="flex h-12 w-12 items-center justify-center rounded-md border border-black/10 text-black/55 hover:bg-black/5 hover:text-black"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+
+              {!currentRequest && (
+                <SubmitButton
+                  canSubmit={canSubmit}
+                  isPending={isPendingSubmit}
+                  isRequestMode={isRequestMode}
+                  deadlinePassed={deadlinePassed}
+                  onClick={handleSubmit}
+                />
+              )}
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 lg:px-5">
@@ -294,6 +365,28 @@ export default function EmployeeDashboard({
                   {backendValidation.violations.map((violation) => (
                     <InlineAlert key={violation.code} text={violation.message} />
                   ))}
+                </div>
+              )}
+
+              {currentRequest && currentRequest.status === 'pending' && (
+                <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#a7fc00]/40 bg-[#a7fc00]/20 px-4 py-3 text-sm font-bold text-black">
+                  <FileQuestion
+                    size={16}
+                    aria-hidden="true"
+                    className="shrink-0 text-black/45"
+                  />
+                  Ваша заявка на изменение графика рассматривается менеджером.
+                </div>
+              )}
+
+              {currentRequest && currentRequest.status === 'rejected' && (
+                <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#ff3495]/20 bg-[#ff3495]/10 px-4 py-3 text-sm font-bold text-black">
+                  <AlertCircle
+                    size={16}
+                    aria-hidden="true"
+                    className="shrink-0 text-[#ff3495]"
+                  />
+                  Менеджер отклонил вашу заявку: {currentRequest.manager_comment || 'Без комментария'}.
                 </div>
               )}
 
@@ -325,13 +418,12 @@ export default function EmployeeDashboard({
         </section>
 
         <p
-          className={`min-h-6 px-1 text-sm font-bold ${
-            submitNotice
-              ? canSubmit
-                ? 'text-black'
-                : 'text-black/55'
-              : 'text-transparent'
-          }`}
+          className={`min-h-6 px-1 text-sm font-bold ${submitNotice
+            ? canSubmit
+              ? 'text-black'
+              : 'text-black/55'
+            : 'text-transparent'
+            }`}
         >
           {submitNotice || 'Нет уведомления'}
         </p>
@@ -487,11 +579,10 @@ function WeeklySummaryBar({ week }: { week: WeekViewModel }) {
           </p>
         </div>
         <span
-          className={`inline-flex h-9 items-center rounded-md px-3 text-xs font-black uppercase ${
-            week.isValid
-              ? 'bg-[#a7fc00] text-black'
-              : 'bg-[#ff3495]/10 text-[#b0005a]'
-          }`}
+          className={`inline-flex h-9 items-center rounded-md px-3 text-xs font-black uppercase ${week.isValid
+            ? 'bg-[#a7fc00] text-black'
+            : 'bg-[#ff3495]/10 text-[#b0005a]'
+            }`}
         >
           {week.isValid ? 'Норма' : 'Проверьте'}
         </span>
@@ -499,9 +590,8 @@ function WeeklySummaryBar({ week }: { week: WeekViewModel }) {
 
       <div className="h-2 overflow-hidden rounded-full bg-black/10">
         <div
-          className={`h-full rounded-full transition-[width] duration-300 ${
-            week.isValid ? 'bg-[#a7fc00]' : 'bg-[#ff3495]'
-          }`}
+          className={`h-full rounded-full transition-[width] duration-300 ${week.isValid ? 'bg-[#a7fc00]' : 'bg-[#ff3495]'
+            }`}
           style={{ width: `${week.progress}%` }}
         />
       </div>
@@ -528,13 +618,12 @@ function MetricTile({
 }: MetricTileProps) {
   return (
     <div
-      className={`rounded-lg border p-3 ${
-        tone === 'success'
-          ? 'border-[#a7fc00] bg-[#a7fc00]'
-          : tone === 'warning'
-            ? 'border-[#ff3495]/25 bg-[#ff3495]/10'
-            : 'border-black/10 bg-[#f7f7f8]'
-      }`}
+      className={`rounded-lg border p-3 ${tone === 'success'
+        ? 'border-[#a7fc00] bg-[#a7fc00]'
+        : tone === 'warning'
+          ? 'border-[#ff3495]/25 bg-[#ff3495]/10'
+          : 'border-black/10 bg-[#f7f7f8]'
+        }`}
     >
       <div className="mb-3 grid size-8 place-items-center rounded-md bg-white text-black">
         <Icon size={16} aria-hidden="true" />
@@ -550,11 +639,10 @@ function HintPill({ isValid, text }: { isValid: boolean; text: string }) {
 
   return (
     <span
-      className={`inline-flex min-h-8 items-center gap-2 rounded-md px-3 text-xs font-bold ${
-        isValid
-          ? 'bg-white text-black/55'
-          : 'bg-white text-black shadow-[inset_0_0_0_1px_rgba(255,52,149,0.22)]'
-      }`}
+      className={`inline-flex min-h-8 items-center gap-2 rounded-md px-3 text-xs font-bold ${isValid
+        ? 'bg-white text-black/55'
+        : 'bg-white text-black shadow-[inset_0_0_0_1px_rgba(255,52,149,0.22)]'
+        }`}
     >
       <Icon
         size={14}
@@ -569,25 +657,35 @@ function HintPill({ isValid, text }: { isValid: boolean; text: string }) {
 function SubmitButton({
   canSubmit,
   isPending,
+  isRequestMode,
+  deadlinePassed,
   onClick,
 }: {
   canSubmit: boolean
   isPending: boolean
+  isRequestMode: boolean
+  deadlinePassed: boolean
   onClick: () => void
 }) {
+  const Icon = deadlinePassed ? Send : Save
+  const label = isPending
+    ? (deadlinePassed ? 'Отправляем' : 'Сохраняем')
+    : (deadlinePassed ? (isRequestMode ? 'Отправить' : 'Запросить замену') : 'Сохранить')
+
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={!canSubmit}
-      className={`inline-flex h-12 items-center justify-center gap-2 rounded-md px-5 text-sm font-black uppercase transition focus:outline-none focus:ring-4 ${
-        canSubmit
-          ? 'bg-[#a7fc00] text-black hover:bg-[#95e700] focus:ring-[#a7fc00]/40'
-          : 'cursor-not-allowed border border-black/10 bg-[#f0f0f2] text-black/35 focus:ring-black/5'
-      }`}
+      className={`inline-flex h-12 items-center justify-center gap-2 rounded-md px-5 text-sm font-black uppercase transition focus:outline-none focus:ring-4 ${canSubmit
+        ? isRequestMode
+          ? 'bg-black text-white hover:bg-black/85 focus:ring-black/20'
+          : 'bg-[#a7fc00] text-black hover:bg-[#95e700] focus:ring-[#a7fc00]/40'
+        : 'cursor-not-allowed border border-black/10 bg-[#f0f0f2] text-black/35 focus:ring-black/5'
+        }`}
     >
-      <Save size={16} aria-hidden="true" />
-      {isPending ? 'Сохраняем' : 'Сохранить'}
+      <Icon size={16} aria-hidden="true" />
+      {label}
     </button>
   )
 }
@@ -738,13 +836,20 @@ function formatScheduleStatus(
   deadlinePassed: boolean,
   invalidIssues: number,
   isPending: boolean,
+  currentRequest: any,
 ): string {
   if (isPending) {
-    return 'Сохраняем'
+    return 'Обработка'
+  }
+
+  if (currentRequest) {
+    if (currentRequest.status === 'pending') return 'Заявка на проверке'
+    if (currentRequest.status === 'approved') return 'Заявка одобрена'
+    if (currentRequest.status === 'rejected') return 'Заявка отклонена'
   }
 
   if (deadlinePassed) {
-    return 'Дедлайн'
+    return 'Дедлайн закрыт'
   }
 
   if (invalidIssues > 0) {

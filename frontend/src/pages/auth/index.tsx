@@ -1,17 +1,14 @@
 import { useState, type FormEvent } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import {
   CalendarDays,
   KeyRound,
   LogIn,
   UserPlus,
-  Users,
 } from 'lucide-react'
 
 import { getApiErrorMessage } from '../../api/client'
-import { resetDemoState } from '../../api/mockBackend'
-import { queryKeys, useLoginMutation, useRegisterMutation } from '../../api/queries'
-import { useAuthStore, type DemoRole } from '../../store/useAuthStore'
+import { useLoginMutation, useRegisterMutation } from '../../api/queries'
+import t2Logo from '../../assets/t2-logo.svg'
 
 type EntryRole = 'manager' | 'user'
 type AuthMode = 'login' | 'register'
@@ -21,8 +18,8 @@ interface AuthPageProps {
 }
 
 const roles: { value: EntryRole; label: string }[] = [
-  { value: 'manager', label: 'Менеджер' },
   { value: 'user', label: 'Сотрудник' },
+  { value: 'manager', label: 'Менеджер' },
 ]
 
 export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
@@ -33,22 +30,11 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
   const [registerEmail, setRegisterEmail] = useState('')
   const [registerPassword, setRegisterPassword] = useState('')
   const [fullName, setFullName] = useState('')
-  const [externalId, setExternalId] = useState('')
   const [alliance, setAlliance] = useState('')
-  const [category, setCategory] = useState('')
   const [vacationDays, setVacationDays] = useState('')
   const [notice, setNotice] = useState(sessionNotice)
-  const queryClient = useQueryClient()
-  const loginAsDemo = useAuthStore((state) => state.loginAsDemo)
   const loginMutation = useLoginMutation()
   const registerMutation = useRegisterMutation()
-
-  function handleDemoLogin(role: DemoRole) {
-    queryClient.clear()
-    resetDemoState()
-    loginAsDemo(role)
-    void queryClient.invalidateQueries({ queryKey: queryKeys.me })
-  }
 
   function handleRoleChange(nextRole: EntryRole) {
     setEntryRole(nextRole)
@@ -86,10 +72,8 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
       {
         email: registerEmail.trim(),
         password: registerPassword,
-        external_id: optionalText(externalId),
         full_name: optionalText(fullName),
         alliance: optionalText(alliance),
-        category: optionalText(category),
         vacation_days_declared: Number.isFinite(declaredDays)
           ? declaredDays
           : undefined,
@@ -119,9 +103,7 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
       <div className="mx-auto flex min-h-[calc(100vh-40px)] w-full max-w-6xl flex-col">
         <header className="flex items-center justify-between pb-5">
           <a href="/" className="flex items-center gap-3 font-black">
-            <span className="grid size-10 place-items-center rounded-md bg-black text-xl leading-none text-white">
-              t<span className="text-[#ff3495]">2</span>
-            </span>
+            <img src={t2Logo} alt="t2 logo" className="size-10 rounded-md" />
             <span className="text-sm uppercase leading-none">
               Schedule
               <br />
@@ -149,18 +131,6 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
 
           <div className="flex items-center justify-center p-5 sm:p-8 lg:p-12">
             <div className="w-full max-w-md">
-              <div className="mb-6 grid gap-2 sm:grid-cols-2">
-                <DemoButton
-                  Icon={Users}
-                  label="Демо менеджер"
-                  onClick={() => handleDemoLogin('manager')}
-                />
-                <DemoButton
-                  Icon={KeyRound}
-                  label="Демо сотрудник"
-                  onClick={() => handleDemoLogin('user')}
-                />
-              </div>
 
               <div className="mb-6 grid grid-cols-2 rounded-lg bg-[#f0f0f2] p-1">
                 {roles.map(({ value, label }) => (
@@ -169,11 +139,10 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
                     type="button"
                     aria-pressed={entryRole === value}
                     onClick={() => handleRoleChange(value)}
-                    className={`rounded-md px-4 py-3 text-sm font-black uppercase transition ${
-                      entryRole === value
-                        ? 'bg-black text-white'
-                        : 'text-black/55 hover:text-black'
-                    }`}
+                    className={`rounded-md px-4 py-3 text-sm font-black uppercase transition ${entryRole === value
+                      ? 'bg-black text-white'
+                      : 'text-black/55 hover:text-black'
+                      }`}
                   >
                     {label}
                   </button>
@@ -280,24 +249,10 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
                   />
                   <div className="grid gap-4 sm:grid-cols-2">
                     <TextField
-                      label="Внешний ID"
-                      value={externalId}
-                      placeholder="6505365461"
-                      onChange={setExternalId}
-                    />
-                    <TextField
                       label="Альянс"
                       value={alliance}
                       placeholder="Alliance 1"
                       onChange={setAlliance}
-                    />
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <TextField
-                      label="Категория"
-                      value={category}
-                      placeholder="operator"
-                      onChange={setCategory}
                     />
                     <TextField
                       label="Дней отпуска"
@@ -322,9 +277,8 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
               )}
 
               <p
-                className={`mt-5 min-h-6 text-sm font-bold ${
-                  notice ? 'text-black' : 'text-transparent'
-                }`}
+                className={`mt-5 min-h-6 text-sm font-bold ${notice ? 'text-black' : 'text-transparent'
+                  }`}
               >
                 {notice || 'Нет уведомления'}
               </p>
@@ -389,11 +343,10 @@ function ModeButton({ active, Icon, label, onClick }: ModeButtonProps) {
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`inline-flex h-12 items-center justify-center gap-2 rounded-md border text-sm font-black uppercase transition ${
-        active
-          ? 'border-black bg-black text-white'
-          : 'border-black/10 bg-white text-black/55 hover:border-black/35 hover:text-black'
-      }`}
+      className={`inline-flex h-12 items-center justify-center gap-2 rounded-md border text-sm font-black uppercase transition ${active
+        ? 'border-black bg-black text-white'
+        : 'border-black/10 bg-white text-black/55 hover:border-black/35 hover:text-black'
+        }`}
     >
       <Icon size={16} aria-hidden="true" />
       {label}
@@ -401,24 +354,6 @@ function ModeButton({ active, Icon, label, onClick }: ModeButtonProps) {
   )
 }
 
-interface DemoButtonProps {
-  Icon: typeof KeyRound
-  label: string
-  onClick: () => void
-}
-
-function DemoButton({ Icon, label, onClick }: DemoButtonProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-black px-4 text-sm font-black uppercase text-white transition hover:bg-black/85 focus:outline-none focus:ring-4 focus:ring-black/20"
-    >
-      <Icon size={16} aria-hidden="true" />
-      {label}
-    </button>
-  )
-}
 
 function optionalText(value: string): string | undefined {
   const trimmedValue = value.trim()

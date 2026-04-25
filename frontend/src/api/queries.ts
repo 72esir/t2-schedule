@@ -18,6 +18,8 @@ import type {
   LoginPayload,
   ScheduleBulkUpdatePayload,
   VacationDaysModerationPayload,
+  ScheduleChangeRequestPayload,
+  ScheduleChangeRequestManagerApproval
 } from './types'
 import { useAuthStore } from '../store/useAuthStore'
 
@@ -35,7 +37,10 @@ export const queryKeys = {
   managerUsers: ['manager', 'users'] as const,
   pendingVacationDays: ['manager', 'vacation-days', 'pending'] as const,
   pendingVerificationUsers: ['manager', 'users', 'pending-verification'] as const,
+  pendingChangeRequests: ['manager', 'schedule-change-requests', 'pending'] as const,
   templates: ['templates'] as const,
+  myScheduleState: ['schedules', 'me', 'state'] as const,
+  myChangeRequest: ['schedules', 'change-request', 'me'] as const,
 }
 
 export function useMeQuery() {
@@ -108,6 +113,38 @@ export function useMyScheduleValidationQuery(enabled = true) {
   })
 }
 
+export function useMyScheduleStateQuery(enabled = true) {
+  return useAuthedQuery({
+    queryKey: queryKeys.myScheduleState,
+    queryFn: scheduleApi.getMineState,
+    enabled,
+  })
+}
+
+export function useMyChangeRequestQuery(enabled = true) {
+  return useAuthedQuery({
+    queryKey: queryKeys.myChangeRequest,
+    queryFn: scheduleApi.getMineChangeRequest,
+    enabled,
+  })
+}
+
+export function useCreateChangeRequestMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: ScheduleChangeRequestPayload) =>
+      scheduleApi.createChangeRequest(payload),
+    onSuccess: () => {
+      invalidateMany(queryClient, [
+        queryKeys.myChangeRequest,
+        queryKeys.managerDashboard,
+        queryKeys.pendingChangeRequests,
+      ])
+    },
+  })
+}
+
 export function useUpdateMyScheduleMutation() {
   const queryClient = useQueryClient()
 
@@ -148,6 +185,59 @@ export function usePendingVerificationUsersQuery(enabled = true) {
     queryKey: queryKeys.pendingVerificationUsers,
     queryFn: managerApi.getPendingVerificationUsers,
     enabled,
+  })
+}
+
+export function usePendingChangeRequestsQuery(enabled = true) {
+  return useAuthedQuery({
+    queryKey: queryKeys.pendingChangeRequests,
+    queryFn: managerApi.getPendingChangeRequests,
+    enabled,
+  })
+}
+
+export function useApproveChangeRequestMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      requestId,
+      payload,
+    }: {
+      requestId: number
+      payload: ScheduleChangeRequestManagerApproval
+    }) => managerApi.approveChangeRequest(requestId, payload),
+    onSuccess: () => {
+      invalidateMany(queryClient, [
+        queryKeys.pendingChangeRequests,
+        queryKeys.managerDashboard,
+        queryKeys.myChangeRequest,
+        queryKeys.mySchedule,
+        queryKeys.myScheduleSummary,
+        queryKeys.myScheduleValidation,
+      ])
+    },
+  })
+}
+
+export function useRejectChangeRequestMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      requestId,
+      payload,
+    }: {
+      requestId: number
+      payload: ScheduleChangeRequestManagerApproval
+    }) => managerApi.rejectChangeRequest(requestId, payload),
+    onSuccess: () => {
+      invalidateMany(queryClient, [
+        queryKeys.pendingChangeRequests,
+        queryKeys.managerDashboard,
+        queryKeys.myChangeRequest,
+      ])
+    },
   })
 }
 

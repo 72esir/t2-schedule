@@ -4,6 +4,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Download,
+  FileQuestion,
   LogOut,
   RefreshCcw,
   ShieldCheck,
@@ -19,9 +20,12 @@ import {
   useExportScheduleMutation,
   useManagerDashboardQuery,
   useModerateVacationDaysMutation,
+  usePendingChangeRequestsQuery,
   usePendingVacationDaysQuery,
   usePendingVerificationUsersQuery,
   usePeriodTemplatesQuery,
+  useApproveChangeRequestMutation,
+  useRejectChangeRequestMutation,
   useVerifyUserMutation,
 } from '../api/queries'
 import type {
@@ -29,7 +33,9 @@ import type {
   PeriodTemplateType,
   User,
   VacationDaysStatus,
+  PendingScheduleChangeRequest,
 } from '../api/types'
+import t2Logo from '../assets/t2-logo.svg'
 
 interface ManagerDashboardProps {
   user: User
@@ -71,11 +77,15 @@ export default function ManagerDashboard({
   const templatesQuery = usePeriodTemplatesQuery()
   const pendingVacationQuery = usePendingVacationDaysQuery()
   const pendingVerificationQuery = usePendingVerificationUsersQuery()
+  const pendingChangeRequestsQuery = usePendingChangeRequestsQuery()
+
   const createPeriodMutation = useCreatePeriodFromTemplateMutation()
   const closePeriodMutation = useClosePeriodMutation()
   const verifyUserMutation = useVerifyUserMutation()
   const moderateVacationMutation = useModerateVacationDaysMutation()
   const exportScheduleMutation = useExportScheduleMutation()
+  const approveChangeRequestMutation = useApproveChangeRequestMutation()
+  const rejectChangeRequestMutation = useRejectChangeRequestMutation()
   const [templateType, setTemplateType] =
     useState<PeriodTemplateType>('two_weeks')
   const [periodStart, setPeriodStart] = useState(toDateInput(new Date()))
@@ -147,6 +157,28 @@ export default function ManagerDashboard({
     )
   }
 
+  function handleApproveChangeRequest(requestId: number, managerComment: string) {
+    setNotice('')
+    approveChangeRequestMutation.mutate(
+      { requestId, payload: { manager_comment: managerComment } },
+      {
+        onSuccess: () => setNotice('Заявка на изменение одобрена.'),
+        onError: (error) => setNotice(getApiErrorMessage(error)),
+      },
+    )
+  }
+
+  function handleRejectChangeRequest(requestId: number, managerComment: string) {
+    setNotice('')
+    rejectChangeRequestMutation.mutate(
+      { requestId, payload: { manager_comment: managerComment } },
+      {
+        onSuccess: () => setNotice('Заявка на изменение отклонена.'),
+        onError: (error) => setNotice(getApiErrorMessage(error)),
+      },
+    )
+  }
+
   function handleExportSchedule() {
     setNotice('')
     exportScheduleMutation.mutate(currentPeriod?.id, {
@@ -175,9 +207,7 @@ export default function ManagerDashboard({
         <header className="grid gap-4 rounded-lg border border-black/10 bg-white px-4 py-4 shadow-sm lg:grid-cols-[1fr_auto] lg:items-center lg:px-6">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className="grid size-10 place-items-center rounded-md bg-black text-sm font-black text-white">
-                t<span className="text-[#ff3495]">2</span>
-              </span>
+              <img src={t2Logo} alt="t2" className="size-10 rounded-md" />
               <span className="rounded-md bg-[#a7fc00] px-3 py-2 text-xs font-black uppercase text-black">
                 Панель менеджера
               </span>
@@ -295,21 +325,19 @@ export default function ManagerDashboard({
                       type="button"
                       aria-pressed={templateType === template.type}
                       onClick={() => setTemplateType(template.type)}
-                      className={`min-h-24 rounded-lg border p-3 text-left transition ${
-                        templateType === template.type
-                          ? 'border-black bg-black text-white'
-                          : 'border-black/10 bg-white text-black hover:border-black/35'
-                      }`}
+                      className={`min-h-24 rounded-lg border p-3 text-left transition ${templateType === template.type
+                        ? 'border-black bg-black text-white'
+                        : 'border-black/10 bg-white text-black hover:border-black/35'
+                        }`}
                     >
                       <span className="block text-sm font-black uppercase">
                         {template.label}
                       </span>
                       <span
-                        className={`mt-2 block text-xs font-bold ${
-                          templateType === template.type
-                            ? 'text-white/60'
-                            : 'text-black/45'
-                        }`}
+                        className={`mt-2 block text-xs font-bold ${templateType === template.type
+                          ? 'text-white/60'
+                          : 'text-black/45'
+                          }`}
                       >
                         {template.description}
                       </span>
@@ -386,6 +414,18 @@ export default function ManagerDashboard({
           </div>
 
           <div className="space-y-4">
+            <Panel title="Запросы на изменение графика">
+              <ChangeRequestQueue
+                requests={pendingChangeRequestsQuery.data ?? []}
+                actionPending={
+                  approveChangeRequestMutation.isPending ||
+                  rejectChangeRequestMutation.isPending
+                }
+                onApprove={handleApproveChangeRequest}
+                onReject={handleRejectChangeRequest}
+              />
+            </Panel>
+
             <Panel title="Ожидают подтверждения">
               <UserQueue
                 users={pendingVerificationQuery.data ?? []}
@@ -407,9 +447,8 @@ export default function ManagerDashboard({
         </section>
 
         <p
-          className={`min-h-6 px-1 text-sm font-bold ${
-            notice ? 'text-black' : 'text-transparent'
-          }`}
+          className={`min-h-6 px-1 text-sm font-bold ${notice ? 'text-black' : 'text-transparent'
+            }`}
         >
           {notice || 'Нет уведомления'}
         </p>
@@ -447,13 +486,12 @@ function MetricTile({
 }: MetricTileProps) {
   return (
     <div
-      className={`rounded-lg border p-4 shadow-sm ${
-        tone === 'success'
-          ? 'border-[#a7fc00] bg-[#a7fc00]'
-          : tone === 'warning'
-            ? 'border-[#ff3495]/25 bg-[#ff3495]/10'
-            : 'border-black/10 bg-white'
-      }`}
+      className={`rounded-lg border p-4 shadow-sm ${tone === 'success'
+        ? 'border-[#a7fc00] bg-[#a7fc00]'
+        : tone === 'warning'
+          ? 'border-[#ff3495]/25 bg-[#ff3495]/10'
+          : 'border-black/10 bg-white'
+        }`}
     >
       <div className="mb-3 grid size-9 place-items-center rounded-md bg-white text-black">
         <Icon size={17} aria-hidden="true" />
@@ -724,4 +762,93 @@ function formatDateTime(value: string): string {
 
 function formatNumber(value: number | undefined): string {
   return typeof value === 'number' ? String(value) : '...'
+}
+
+interface ChangeRequestQueueProps {
+  requests: PendingScheduleChangeRequest[]
+  actionPending: boolean
+  onApprove: (requestId: number, comment: string) => void
+  onReject: (requestId: number, comment: string) => void
+}
+
+function ChangeRequestQueue({
+  requests,
+  actionPending,
+  onApprove,
+  onReject,
+}: ChangeRequestQueueProps) {
+  const [comments, setComments] = useState<Record<number, string>>({})
+
+  if (!requests.length) {
+    return (
+      <EmptyState
+        Icon={FileQuestion}
+        title="Нет заявок"
+        text="Нет ожидающих заявок на изменение графика."
+      />
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      {requests.map((request) => {
+        const comment = comments[request.id] ?? ''
+
+        return (
+          <div
+            key={request.id}
+            className="rounded-lg border border-black/10 bg-[#f7f7f8] p-3 text-sm"
+          >
+            <div className="mb-2">
+              <p className="font-black text-black">
+                {request.full_name ?? request.email ?? `ID: ${request.user_id}`}
+              </p>
+              <p className="mt-1 text-xs font-bold text-black/65">
+                <span className="font-black uppercase text-black/45">Причина: </span>
+                {request.employee_comment}
+              </p>
+              <p className="mt-1 text-xs font-bold text-black/65">
+                <span className="font-black uppercase text-black/45">Изменённые дни: </span>
+                {request.changed_days.map(formatDate).join(', ')}
+              </p>
+            </div>
+
+            <label className="mb-2 block">
+              <span className="mb-1 block text-xs font-black uppercase text-black/45">
+                Комментарий менеджера
+              </span>
+              <input
+                type="text"
+                value={comment}
+                placeholder="Опционально..."
+                onChange={(e) =>
+                  setComments((prev) => ({ ...prev, [request.id]: e.target.value }))
+                }
+                className="h-10 w-full rounded-md border border-black/10 bg-white px-3 text-sm font-bold outline-none focus:border-[#ff3495] focus:ring-4 focus:ring-[#ff3495]/15"
+              />
+            </label>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={actionPending}
+                onClick={() => onApprove(request.id, comment.trim())}
+                className="inline-flex h-9 items-center justify-center rounded-md bg-[#a7fc00] px-4 text-xs font-black uppercase text-black transition hover:bg-[#95e700] disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35"
+              >
+                Одобрить
+              </button>
+              <button
+                type="button"
+                disabled={actionPending}
+                onClick={() => onReject(request.id, comment.trim())}
+                className="inline-flex h-9 items-center justify-center rounded-md border border-[#ff3495]/35 bg-[#ff3495]/10 px-4 text-xs font-black uppercase text-[#ff3495] transition hover:border-[#ff3495] disabled:cursor-not-allowed disabled:text-black/35"
+              >
+                Отклонить
+              </button>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
