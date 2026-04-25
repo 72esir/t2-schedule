@@ -215,6 +215,11 @@ class ScheduleForUser(BaseModel):
     vacation_work: Optional[dict] = None
 
 
+class MyScheduleState(BaseModel):
+    days: Dict[date, ScheduleDayPayload]
+    last_saved_at: Optional[datetime] = None
+
+
 class ScheduleSummary(BaseModel):
     daily_hours: Dict[date, float]
     weekly_hours: Dict[date, float]
