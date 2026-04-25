@@ -80,7 +80,7 @@ def get_manager_dashboard(
     ).count()
     pending_schedule_change_requests_count = (
         db.query(ScheduleChangeRequest)
-        .join(User)
+        .join(User, ScheduleChangeRequest.user_id == User.id)
         .filter(
             User.alliance == current_user.alliance,
             ScheduleChangeRequest.status == ScheduleChangeRequestStatus.PENDING,
@@ -174,7 +174,7 @@ def get_pending_schedule_change_requests(
 ):
     requests = (
         db.query(ScheduleChangeRequest)
-        .join(User)
+        .join(User, ScheduleChangeRequest.user_id == User.id)
         .filter(
             User.alliance == current_user.alliance,
             ScheduleChangeRequest.status == ScheduleChangeRequestStatus.PENDING,
@@ -194,7 +194,7 @@ def approve_schedule_change_request(
 ):
     change_request = (
         db.query(ScheduleChangeRequest)
-        .join(User)
+        .join(User, ScheduleChangeRequest.user_id == User.id)
         .filter(ScheduleChangeRequest.id == request_id)
         .first()
     )
@@ -239,7 +239,7 @@ def reject_schedule_change_request(
 ):
     change_request = (
         db.query(ScheduleChangeRequest)
-        .join(User)
+        .join(User, ScheduleChangeRequest.user_id == User.id)
         .filter(ScheduleChangeRequest.id == request_id)
         .first()
     )
