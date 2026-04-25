@@ -383,3 +383,32 @@ class GoogleOAuthConnectOut(BaseModel):
 class GoogleOAuthCallbackOut(BaseModel):
     connected: bool
     google_account_email: Optional[EmailStr] = None
+
+
+class GoogleCalendarListItemOut(BaseModel):
+    id: str
+    summary: str
+    primary: bool = False
+    selected: bool = False
+    access_role: Optional[str] = None
+    time_zone: Optional[str] = None
+
+
+class GoogleCalendarBusyIntervalOut(BaseModel):
+    start: datetime
+    end: datetime
+
+
+class GoogleCalendarAvailabilityDayOut(BaseModel):
+    all_day: bool = False
+    event_count: int = 0
+    busy_intervals: list[GoogleCalendarBusyIntervalOut] = Field(default_factory=list)
+
+
+class GoogleCalendarAvailabilityOut(BaseModel):
+    period_id: int
+    calendar_id: str
+    period_start: date
+    period_end: date
+    time_zone: Optional[str] = None
+    days: Dict[date, GoogleCalendarAvailabilityDayOut] = Field(default_factory=dict)

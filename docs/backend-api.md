@@ -196,8 +196,8 @@ Request:
 
 ## Google Calendar integration
 
-These endpoints only manage connection to Google Calendar for now.
-They do not yet read events or generate schedules.
+These endpoints manage Google Calendar connection and can already read calendar availability for a period.
+They still do not yet generate schedules from those intervals.
 
 Required env:
 
@@ -257,6 +257,64 @@ Response:
 ```
 
 Frontend should redirect browser to this URL.
+
+### GET `/integrations/google/calendars`
+
+Returns available Google calendars for the connected employee.
+
+Response:
+
+```json
+[
+  {
+    "id": "primary",
+    "summary": "My calendar",
+    "primary": true,
+    "selected": true,
+    "access_role": "owner",
+    "time_zone": "Asia/Yekaterinburg"
+  }
+]
+```
+
+### GET `/integrations/google/availability`
+
+Returns busy intervals from Google Calendar for the employee period.
+
+Query params:
+
+- `period_id` optional
+- `calendar_id` optional, default `primary`
+
+Behavior:
+
+- if `period_id` is omitted, backend uses current active employee period
+- if a Google event is all-day, day gets `all_day=true`
+- timed events are grouped into `busy_intervals`
+
+Response:
+
+```json
+{
+  "period_id": 11,
+  "calendar_id": "primary",
+  "period_start": "2026-04-27",
+  "period_end": "2026-05-03",
+  "time_zone": "Asia/Yekaterinburg",
+  "days": {
+    "2026-04-27": {
+      "all_day": false,
+      "event_count": 2,
+      "busy_intervals": [
+        {
+          "start": "2026-04-27T09:00:00Z",
+          "end": "2026-04-27T10:00:00Z"
+        }
+      ]
+    }
+  }
+}
+```
 
 ### GET `/integrations/google/callback`
 

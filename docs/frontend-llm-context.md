@@ -65,6 +65,8 @@ Important:
 - Apply suggested template via `POST /templates/suggested/current/apply`
 - Google Calendar connection status via `GET /integrations/google/status`
 - Google Calendar connect URL via `GET /integrations/google/connect`
+- Google Calendar list via `GET /integrations/google/calendars`
+- Google Calendar availability via `GET /integrations/google/availability`
 - Google Calendar disconnect via `DELETE /integrations/google/disconnect`
 
 ## Required manager screens
@@ -172,11 +174,12 @@ Use `last_saved_at` to show:
 
 ## Google Calendar connection flow
 
-This is only the first integration layer.
 Backend currently supports:
 
 - checking whether Google Calendar is connected
 - getting OAuth authorization URL
+- listing available calendars
+- loading busy intervals for a selected calendar and period
 - handling OAuth callback
 - disconnecting Google Calendar
 
@@ -193,8 +196,11 @@ Recommended frontend flow:
 
 Important:
 
-- this does not yet suggest schedules from calendar events
-- this only prepares the connection layer needed for that feature
+- this still does not yet suggest schedules from calendar events
+- but frontend can already:
+  - choose a calendar
+  - load busy intervals for current period
+  - show a preview of occupied days before schedule suggestion logic is added
 
 ## API reference
 

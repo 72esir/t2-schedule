@@ -1,8 +1,8 @@
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -13,9 +13,13 @@ from sqlalchemy.orm import Session
 from backend.core import get_current_verified_user
 from backend.core.config import settings
 from backend.db import get_db
-from backend.models import GoogleCalendarConnection, User
+from backend.models import CollectionPeriod, GoogleCalendarConnection, User
 from backend.schemas import (
+    GoogleCalendarAvailabilityDayOut,
+    GoogleCalendarAvailabilityOut,
+    GoogleCalendarBusyIntervalOut,
     GoogleCalendarConnectionStatusOut,
+    GoogleCalendarListItemOut,
     GoogleOAuthCallbackOut,
     GoogleOAuthConnectOut,
 )
@@ -25,6 +29,8 @@ router = APIRouter(prefix="/integrations/google", tags=["integrations"])
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
+GOOGLE_CALENDAR_LIST_URL = "https://www.googleapis.com/calendar/v3/users/me/calendarList"
+GOOGLE_CALENDAR_EVENTS_URL_TEMPLATE = "https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events"
 GOOGLE_STATE_TTL_MINUTES = 10
 
 
@@ -95,9 +101,132 @@ def _json_get(url: str, headers: Optional[dict[str, str]] = None) -> dict:
             return json.loads(response.read().decode("utf-8"))
     except HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
-        raise HTTPException(status_code=502, detail=f"Google user info request failed: {detail}") from exc
+        raise HTTPException(status_code=502, detail=f"Google request failed: {detail}") from exc
     except URLError as exc:
-        raise HTTPException(status_code=502, detail="Google user info request failed") from exc
+        raise HTTPException(status_code=502, detail="Google request failed") from exc
+
+
+def _get_current_period(db: Session, alliance: Optional[str]) -> Optional[CollectionPeriod]:
+    if not alliance:
+        return None
+    return (
+        db.query(CollectionPeriod)
+        .filter(
+            CollectionPeriod.is_open.is_(True),
+            CollectionPeriod.alliance == alliance,
+        )
+        .order_by(CollectionPeriod.created_at.desc())
+        .first()
+    )
+
+
+def _get_period_for_user(
+    *,
+    db: Session,
+    current_user: User,
+    period_id: Optional[int],
+) -> CollectionPeriod:
+    if period_id is None:
+        period = _get_current_period(db, current_user.alliance)
+        if not period:
+            raise HTTPException(status_code=404, detail="No active period found")
+        return period
+
+    period = db.query(CollectionPeriod).filter(CollectionPeriod.id == period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    if period.alliance != current_user.alliance:
+        raise HTTPException(status_code=403, detail="No access to period from another alliance")
+    return period
+
+
+def _get_connection_or_404(*, db: Session, user_id: int) -> GoogleCalendarConnection:
+    connection = (
+        db.query(GoogleCalendarConnection)
+        .filter(GoogleCalendarConnection.user_id == user_id)
+        .first()
+    )
+    if not connection:
+        raise HTTPException(status_code=404, detail="Google Calendar is not connected")
+    return connection
+
+
+def _refresh_access_token_if_needed(*, db: Session, connection: GoogleCalendarConnection) -> GoogleCalendarConnection:
+    if not connection.token_expires_at:
+        return connection
+
+    now = datetime.now(timezone.utc)
+    expires_at = connection.token_expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if expires_at > now + timedelta(seconds=60):
+        return connection
+    if not connection.refresh_token:
+        return connection
+
+    token_data = _json_post(
+        GOOGLE_TOKEN_URL,
+        {
+            "client_id": settings.GOOGLE_CLIENT_ID,
+            "client_secret": settings.GOOGLE_CLIENT_SECRET,
+            "refresh_token": connection.refresh_token,
+            "grant_type": "refresh_token",
+        },
+    )
+
+    access_token = token_data.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=502, detail="Google token refresh failed")
+
+    connection.access_token = access_token
+    connection.token_type = token_data.get("token_type") or connection.token_type
+    connection.scope = token_data.get("scope") or connection.scope
+
+    expires_in = token_data.get("expires_in")
+    if expires_in is not None:
+        try:
+            connection.token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=int(expires_in))
+        except (TypeError, ValueError):
+            pass
+
+    db.commit()
+    db.refresh(connection)
+    return connection
+
+
+def _authorized_google_get(*, db: Session, connection: GoogleCalendarConnection, url: str) -> dict:
+    connection = _refresh_access_token_if_needed(db=db, connection=connection)
+    return _json_get(
+        url,
+        headers={"Authorization": f"Bearer {connection.access_token}"},
+    )
+
+
+def _parse_google_event_datetime(value: str) -> datetime:
+    normalized = value.replace("Z", "+00:00")
+    parsed = datetime.fromisoformat(normalized)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def _extract_busy_interval(event: dict) -> tuple[Optional[date], Optional[GoogleCalendarBusyIntervalOut], bool]:
+    start_payload = event.get("start", {})
+    end_payload = event.get("end", {})
+
+    if "date" in start_payload:
+        day = date.fromisoformat(start_payload["date"])
+        return day, None, True
+
+    start_raw = start_payload.get("dateTime")
+    end_raw = end_payload.get("dateTime")
+    if not start_raw or not end_raw:
+        return None, None, False
+
+    start_dt = _parse_google_event_datetime(start_raw)
+    end_dt = _parse_google_event_datetime(end_raw)
+    return start_dt.date(), GoogleCalendarBusyIntervalOut(start=start_dt, end=end_dt), False
 
 
 def _redirect_or_json(*, success: bool, email: Optional[str] = None, error: Optional[str] = None):
@@ -133,6 +262,33 @@ def get_google_calendar_status(
     )
 
 
+@router.get("/calendars", response_model=list[GoogleCalendarListItemOut])
+def list_google_calendars(
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
+):
+    _require_google_oauth_configured()
+    connection = _get_connection_or_404(db=db, user_id=current_user.id)
+    payload = _authorized_google_get(
+        db=db,
+        connection=connection,
+        url=f"{GOOGLE_CALENDAR_LIST_URL}?maxResults=250&minAccessRole=reader",
+    )
+    items = payload.get("items", [])
+    return [
+        GoogleCalendarListItemOut(
+            id=item["id"],
+            summary=item.get("summaryOverride") or item.get("summary") or item["id"],
+            primary=bool(item.get("primary")),
+            selected=bool(item.get("selected", True)),
+            access_role=item.get("accessRole"),
+            time_zone=item.get("timeZone"),
+        )
+        for item in items
+        if not item.get("deleted")
+    ]
+
+
 @router.get("/connect", response_model=GoogleOAuthConnectOut)
 def build_google_calendar_connect_url(
     current_user: User = Depends(get_current_verified_user),
@@ -152,6 +308,66 @@ def build_google_calendar_connect_url(
         }
     )
     return GoogleOAuthConnectOut(authorization_url=f"{GOOGLE_AUTH_URL}?{query}")
+
+
+@router.get("/availability", response_model=GoogleCalendarAvailabilityOut)
+def get_google_calendar_availability(
+    period_id: Optional[int] = Query(default=None),
+    calendar_id: str = Query(default="primary"),
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
+):
+    _require_google_oauth_configured()
+    connection = _get_connection_or_404(db=db, user_id=current_user.id)
+    period = _get_period_for_user(db=db, current_user=current_user, period_id=period_id)
+
+    time_min = datetime.combine(period.period_start, time.min, tzinfo=timezone.utc)
+    time_max = datetime.combine(period.period_end + timedelta(days=1), time.min, tzinfo=timezone.utc)
+    query = urlencode(
+        {
+            "singleEvents": "true",
+            "orderBy": "startTime",
+            "timeMin": time_min.isoformat().replace("+00:00", "Z"),
+            "timeMax": time_max.isoformat().replace("+00:00", "Z"),
+            "maxResults": 2500,
+        }
+    )
+    url = GOOGLE_CALENDAR_EVENTS_URL_TEMPLATE.format(calendar_id=quote(calendar_id, safe="")) + f"?{query}"
+    payload = _authorized_google_get(
+        db=db,
+        connection=connection,
+        url=url,
+    )
+
+    days: dict[date, GoogleCalendarAvailabilityDayOut] = {}
+    for offset in range((period.period_end - period.period_start).days + 1):
+        day = period.period_start + timedelta(days=offset)
+        days[day] = GoogleCalendarAvailabilityDayOut()
+
+    for event in payload.get("items", []):
+        day, interval, is_all_day = _extract_busy_interval(event)
+        if day is None or day not in days:
+            continue
+
+        day_state = days[day]
+        day_state.event_count += 1
+        if is_all_day:
+            day_state.all_day = True
+            continue
+        if interval:
+            day_state.busy_intervals.append(interval)
+
+    for day_state in days.values():
+        day_state.busy_intervals.sort(key=lambda item: item.start)
+
+    return GoogleCalendarAvailabilityOut(
+        period_id=period.id,
+        calendar_id=calendar_id,
+        period_start=period.period_start,
+        period_end=period.period_end,
+        time_zone=payload.get("timeZone"),
+        days=days,
+    )
 
 
 @router.get("/callback", response_model=GoogleOAuthCallbackOut)
