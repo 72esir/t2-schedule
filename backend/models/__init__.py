@@ -42,6 +42,27 @@ class ScheduleChangeRequestStatus(str, enum.Enum):
     REJECTED = "rejected"
 
 
+def enum_values(enum_cls: type[enum.Enum]) -> list[str]:
+    return [item.value for item in enum_cls]
+
+
+user_role_db_enum = Enum(
+    UserRole,
+    values_callable=enum_values,
+    name="userrole",
+)
+vacation_days_status_db_enum = Enum(
+    VacationDaysStatus,
+    values_callable=enum_values,
+    name="vacationdaysstatus",
+)
+schedule_change_request_status_db_enum = Enum(
+    ScheduleChangeRequestStatus,
+    values_callable=enum_values,
+    name="schedulechangerequeststatus",
+)
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -56,11 +77,11 @@ class User(Base):
     full_name = Column(Text, nullable=True)
     alliance = Column(Text, nullable=True)
     category = Column(String(64), nullable=True)
-    role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
+    role = Column(user_role_db_enum, default=UserRole.USER, nullable=False)
     vacation_days_declared = Column(Integer, nullable=True)
     vacation_days_approved = Column(Integer, nullable=True)
     vacation_days_status = Column(
-        Enum(VacationDaysStatus),
+        vacation_days_status_db_enum,
         default=VacationDaysStatus.PENDING,
         nullable=False,
     )
@@ -164,7 +185,7 @@ class ScheduleChangeRequest(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     period_id = Column(Integer, ForeignKey("collection_periods.id", ondelete="CASCADE"), nullable=False)
     status = Column(
-        Enum(ScheduleChangeRequestStatus),
+        schedule_change_request_status_db_enum,
         default=ScheduleChangeRequestStatus.PENDING,
         nullable=False,
     )
