@@ -191,7 +191,7 @@ Converts employee streak into internal bonus balance.
 
 Current rule:
 
-- every `5` streak points can be converted into `3` bonus points
+- every `5` streak points can be converted into `10` bonus points
 - one request redeems exactly one set
 - redeemed streak is subtracted from current streak
 
@@ -200,8 +200,8 @@ Response:
 ```json
 {
   "converted_streak": 5,
-  "awarded_bonus": 3,
-  "bonus_balance": 6,
+  "awarded_bonus": 10,
+  "bonus_balance": 20,
   "current_streak": 0,
   "redeemable_sets": 0
 }

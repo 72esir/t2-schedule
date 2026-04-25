@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from backend.models import CollectionPeriod, ScheduleChangeRequest, ScheduleEntry, User, UserRole
 
 STREAK_REDEEM_THRESHOLD = 5
-STREAK_REDEEM_BONUS = 3
+STREAK_REDEEM_BONUS = 10
 
 
 @dataclass

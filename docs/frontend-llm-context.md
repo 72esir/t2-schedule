@@ -213,7 +213,7 @@ Employee can exchange streak into internal bonus points.
 
 Current backend rule:
 
-- `5` streak -> `3` bonus points
+- `5` streak -> `10` bonus points
 - one request redeems one set only
 
 Use:
