@@ -11,6 +11,14 @@ from backend.core.config import settings
 from backend.db import Base, engine
 
 
+def _get_cors_origins() -> list[str]:
+    return [
+        origin.strip()
+        for origin in settings.CORS_ORIGINS.split(",")
+        if origin.strip()
+    ]
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="T2 Schedule API",
@@ -23,7 +31,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=_get_cors_origins(),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
