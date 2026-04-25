@@ -53,6 +53,8 @@ Important:
 - Save/update schedule
 - Read-only empty state if no active period exists
 - Read-only state after deadline
+- Post-deadline schedule change request form
+- View own post-deadline request status
 - Hours summary by day/week/period
 - Validation warnings for weekly hours and work streak
 
@@ -72,6 +74,7 @@ Important:
 - Employee validation warnings
 - Pending vacation moderation queue
 - Vacation moderation controls
+- Pending post-deadline schedule review requests
 - Excel export with hours and violations
 
 ## Vacation moderation UI
@@ -115,9 +118,31 @@ It already returns:
 - submitted vs pending counts
 - pending verification count
 - pending vacation moderation count
+- pending schedule change requests count
 - problem employees with validation violations
 
 Frontend can use this single response for dashboard cards and a "problem schedules" block.
+
+## Post-deadline review flow
+
+Employee flow:
+
+1. After deadline, normal `PUT /schedules/me` is blocked.
+2. Employee edits a proposed version locally in UI.
+3. Employee sends it to `POST /schedules/change-request`.
+4. Employee can check current request status with `GET /schedules/change-request/me`.
+
+Manager flow:
+
+1. Open queue from `GET /manager/schedule-change-requests/pending`
+2. Review proposed days and employee comment
+3. Approve with `PUT /manager/schedule-change-requests/{id}/approve`
+4. Reject with `PUT /manager/schedule-change-requests/{id}/reject`
+
+Important:
+
+- employee can send only one request per active period
+- approving a request replaces the stored schedule with the proposed version
 
 ## API reference
 

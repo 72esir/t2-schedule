@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,10 +8,20 @@ from sqlalchemy.orm import Session
 
 from backend.core import get_current_active_user
 from backend.db import get_db
-from backend.models import CollectionPeriod, ScheduleEntry, User, UserRole, VacationDaysStatus
+from backend.models import (
+    CollectionPeriod,
+    ScheduleChangeRequest,
+    ScheduleChangeRequestStatus,
+    ScheduleEntry,
+    User,
+    UserRole,
+    VacationDaysStatus,
+)
 from backend.schemas import (
     ManagerDashboardOut,
     ManagerProblemEmployeeOut,
+    ScheduleChangeRequestDecision,
+    ScheduleChangeRequestManagerOut,
     UserOut,
     VacationDaysModerationRequest,
 )
@@ -23,6 +34,30 @@ def require_manager(current_user: User = Depends(get_current_active_user)):
     if current_user.role != UserRole.MANAGER:
         raise HTTPException(status_code=403, detail="РўСЂРµР±СѓСЋС‚СЃСЏ РїСЂР°РІР° РјРµРЅРµРґР¶РµСЂР°")
     return current_user
+
+
+def _change_request_to_manager_response(change_request: ScheduleChangeRequest) -> ScheduleChangeRequestManagerOut:
+    proposed_days = {
+        day_str: payload for day_str, payload in (change_request.proposed_schedule or {}).items()
+    }
+    return ScheduleChangeRequestManagerOut(
+        id=change_request.id,
+        user_id=change_request.user_id,
+        period_id=change_request.period_id,
+        status=change_request.status,
+        employee_comment=change_request.employee_comment,
+        manager_comment=change_request.manager_comment,
+        proposed_days={
+            datetime.fromisoformat(day_str).date(): payload
+            for day_str, payload in proposed_days.items()
+        },
+        created_at=change_request.created_at,
+        resolved_at=change_request.resolved_at,
+        resolved_by_manager_id=change_request.resolved_by_manager_id,
+        full_name=change_request.user.full_name,
+        email=change_request.user.email,
+        alliance=change_request.user.alliance,
+    )
 
 
 @router.get("/dashboard", response_model=ManagerDashboardOut)
@@ -43,6 +78,15 @@ def get_manager_dashboard(
         User.vacation_days_status == VacationDaysStatus.PENDING,
         User.vacation_days_declared.is_not(None),
     ).count()
+    pending_schedule_change_requests_count = (
+        db.query(ScheduleChangeRequest)
+        .join(User)
+        .filter(
+            User.alliance == current_user.alliance,
+            ScheduleChangeRequest.status == ScheduleChangeRequestStatus.PENDING,
+        )
+        .count()
+    )
 
     period = (
         db.query(CollectionPeriod)
@@ -58,6 +102,7 @@ def get_manager_dashboard(
             pending_count=total_employees,
             pending_verification_count=pending_verification_count,
             pending_vacation_moderation_count=pending_vacation_moderation_count,
+            pending_schedule_change_requests_count=pending_schedule_change_requests_count,
             employees_with_violations_count=0,
             problem_employees=[],
         )
@@ -116,9 +161,102 @@ def get_manager_dashboard(
         pending_count=max(total_employees - submitted_count, 0),
         pending_verification_count=pending_verification_count,
         pending_vacation_moderation_count=pending_vacation_moderation_count,
+        pending_schedule_change_requests_count=pending_schedule_change_requests_count,
         employees_with_violations_count=len(problem_employees),
         problem_employees=problem_employees,
     )
+
+
+@router.get("/schedule-change-requests/pending", response_model=List[ScheduleChangeRequestManagerOut])
+def get_pending_schedule_change_requests(
+    current_user: User = Depends(require_manager),
+    db: Session = Depends(get_db),
+):
+    requests = (
+        db.query(ScheduleChangeRequest)
+        .join(User)
+        .filter(
+            User.alliance == current_user.alliance,
+            ScheduleChangeRequest.status == ScheduleChangeRequestStatus.PENDING,
+        )
+        .order_by(ScheduleChangeRequest.created_at.desc())
+        .all()
+    )
+    return [_change_request_to_manager_response(change_request) for change_request in requests]
+
+
+@router.put("/schedule-change-requests/{request_id}/approve", response_model=ScheduleChangeRequestManagerOut)
+def approve_schedule_change_request(
+    request_id: int,
+    payload: ScheduleChangeRequestDecision,
+    current_user: User = Depends(require_manager),
+    db: Session = Depends(get_db),
+):
+    change_request = (
+        db.query(ScheduleChangeRequest)
+        .join(User)
+        .filter(ScheduleChangeRequest.id == request_id)
+        .first()
+    )
+    if not change_request:
+        raise HTTPException(status_code=404, detail="Р—Р°СЏРІРєР° РЅРµ РЅР°Р№РґРµРЅР°")
+    if change_request.user.alliance != current_user.alliance:
+        raise HTTPException(status_code=403, detail="РќРµС‚ РґРѕСЃС‚СѓРїР° Рє Р·Р°СЏРІРєРµ РёР· РґСЂСѓРіРѕРіРѕ Р°Р»СЊСЏРЅСЃР°")
+    if change_request.status != ScheduleChangeRequestStatus.PENDING:
+        raise HTTPException(status_code=400, detail="Р—Р°СЏРІРєР° СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅР°")
+
+    db.query(ScheduleEntry).filter(
+        ScheduleEntry.user_id == change_request.user_id,
+        ScheduleEntry.period_id == change_request.period_id,
+    ).delete()
+
+    for day_str, proposed_payload in (change_request.proposed_schedule or {}).items():
+        db.add(
+            ScheduleEntry(
+                user_id=change_request.user_id,
+                period_id=change_request.period_id,
+                day=datetime.fromisoformat(day_str).date(),
+                status=proposed_payload["status"],
+                meta=proposed_payload.get("meta"),
+            )
+        )
+
+    change_request.status = ScheduleChangeRequestStatus.APPROVED
+    change_request.manager_comment = payload.manager_comment
+    change_request.resolved_by_manager_id = current_user.id
+    change_request.resolved_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(change_request)
+    return _change_request_to_manager_response(change_request)
+
+
+@router.put("/schedule-change-requests/{request_id}/reject", response_model=ScheduleChangeRequestManagerOut)
+def reject_schedule_change_request(
+    request_id: int,
+    payload: ScheduleChangeRequestDecision,
+    current_user: User = Depends(require_manager),
+    db: Session = Depends(get_db),
+):
+    change_request = (
+        db.query(ScheduleChangeRequest)
+        .join(User)
+        .filter(ScheduleChangeRequest.id == request_id)
+        .first()
+    )
+    if not change_request:
+        raise HTTPException(status_code=404, detail="Р—Р°СЏРІРєР° РЅРµ РЅР°Р№РґРµРЅР°")
+    if change_request.user.alliance != current_user.alliance:
+        raise HTTPException(status_code=403, detail="РќРµС‚ РґРѕСЃС‚СѓРїР° Рє Р·Р°СЏРІРєРµ РёР· РґСЂСѓРіРѕРіРѕ Р°Р»СЊСЏРЅСЃР°")
+    if change_request.status != ScheduleChangeRequestStatus.PENDING:
+        raise HTTPException(status_code=400, detail="Р—Р°СЏРІРєР° СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅР°")
+
+    change_request.status = ScheduleChangeRequestStatus.REJECTED
+    change_request.manager_comment = payload.manager_comment
+    change_request.resolved_by_manager_id = current_user.id
+    change_request.resolved_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(change_request)
+    return _change_request_to_manager_response(change_request)
 
 
 @router.get("/vacation-days/pending", response_model=List[UserOut])
