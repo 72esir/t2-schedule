@@ -17,10 +17,6 @@ Use this file as context for generating frontend code against the current backen
   - reviews employee schedules
   - moderates employee vacation day declarations
 
-- Admin:
-  - technical superuser
-  - broader user-management abilities
-
 ## UI entry flow
 
 - Start screen should let user choose:

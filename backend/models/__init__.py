@@ -25,7 +25,6 @@ except ImportError:
 
 
 class UserRole(str, enum.Enum):
-    ADMIN = "admin"
     MANAGER = "manager"
     USER = "user"
 
