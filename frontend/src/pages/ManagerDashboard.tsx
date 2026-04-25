@@ -213,7 +213,7 @@ export default function ManagerDashboard({
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <img src={t2Logo} alt="t2" className="size-10 rounded-md" />
-              <span className="rounded-md bg-[#a7fc00] px-3 py-2 text-xs font-black uppercase text-black">
+              <span className="rounded-md bg-black px-3 py-2 text-xs font-black uppercase text-white">
                 Панель менеджера
               </span>
               <span className="rounded-md border border-black/10 px-3 py-2 text-xs font-black uppercase text-black/55">
@@ -250,7 +250,7 @@ export default function ManagerDashboard({
           <AlertBlock text={getApiErrorMessage(dashboardQuery.error)} />
         )}
 
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid grid-cols-4 gap-2 md:gap-3">
           <MetricTile
             Icon={Users}
             label="Сотрудники"
@@ -278,8 +278,8 @@ export default function ManagerDashboard({
           />
         </section>
 
-        <section className="grid flex-1 gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-          <div className="space-y-4">
+        <section className="grid flex-1 gap-4 xl:grid-cols-[1fr_1fr] items-start">
+          <div className="grid gap-4 h-full grid-rows-[auto_auto_1fr]">
             <Panel title="Текущий период">
               {currentPeriod ? (
                 <div className="space-y-4">
@@ -296,7 +296,7 @@ export default function ManagerDashboard({
                       type="button"
                       onClick={handleExportSchedule}
                       disabled={isBusy}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#a7fc00] px-4 text-sm font-black uppercase text-black transition hover:bg-[#95e700] disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35"
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-black px-4 text-sm font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35 focus:outline-none focus:ring-4 focus:ring-black/20"
                     >
                       <Download size={16} aria-hidden="true" />
                       Экспорт
@@ -409,11 +409,11 @@ export default function ManagerDashboard({
 
             <Panel title="Проблемные графики">
               {dashboard?.problem_employees.length ? (
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-[460px] pr-2 overflow-y-auto">
                   {dashboard.problem_employees.map((employee) => (
                     <div
                       key={employee.user_id}
-                      className="rounded-lg border border-[#ff3495]/20 bg-[#ff3495]/10 p-3"
+                      className="rounded-lg border-2 border-[#ff3495] bg-white p-3"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
@@ -489,7 +489,7 @@ interface PanelProps {
 function Panel({ title, children }: PanelProps) {
   return (
     <section className="rounded-lg border border-black/10 bg-white p-4 shadow-sm lg:p-5">
-      <h2 className="mb-4 text-lg font-black uppercase leading-none">{title}</h2>
+      <h2 className="mb-4 text-base sm:text-lg font-black uppercase leading-none">{title}</h2>
       {children}
     </section>
   )
@@ -510,18 +510,20 @@ function MetricTile({
 }: MetricTileProps) {
   return (
     <div
-      className={`rounded-lg border p-4 shadow-sm ${tone === 'success'
-        ? 'border-[#a7fc00] bg-[#a7fc00]'
+      className={`rounded-lg border p-2 sm:p-5 shadow-sm flex flex-col justify-between ${tone === 'success'
+        ? 'border-[#a7fc00] bg-[#a7fc00] text-black'
         : tone === 'warning'
-          ? 'border-[#ff3495]/25 bg-[#ff3495]/10'
+          ? 'border-2 border-[#ff3495] bg-white'
           : 'border-black/10 bg-white'
         }`}
     >
-      <div className="mb-3 grid size-9 place-items-center rounded-md bg-white text-black">
-        <Icon size={17} aria-hidden="true" />
+      <div className="mb-2 grid size-8 sm:size-10 shrink-0 place-items-center rounded-md bg-white text-black self-start">
+        <Icon size={18} aria-hidden="true" />
       </div>
-      <p className="text-xs font-black uppercase text-black/45">{label}</p>
-      <p className="mt-1 truncate text-2xl font-black leading-none">{value}</p>
+      <div className="min-w-0">
+        <p className="text-[9px] sm:text-xs font-black uppercase text-black/45 leading-tight truncate">{label}</p>
+        <p className="mt-1 truncate text-base sm:text-3xl font-black leading-none">{value}</p>
+      </div>
     </div>
   )
 }
@@ -589,7 +591,7 @@ function UserQueue({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 max-h-[460px] pr-2 overflow-y-auto">
       {users.map((employee) => (
         <div
           key={employee.id}
@@ -610,7 +612,7 @@ function UserQueue({
                 type="button"
                 disabled={actionPending}
                 onClick={() => onReject(employee)}
-                className="inline-flex h-10 items-center justify-center rounded-md border border-[#ff3495]/35 bg-[#ff3495]/10 px-4 text-xs font-black uppercase text-[#ff3495] transition hover:border-[#ff3495] disabled:cursor-not-allowed disabled:text-black/35"
+                className="inline-flex h-10 items-center justify-center rounded-md border border-[#ff3495] bg-white px-4 text-xs font-black uppercase text-[#ff3495] transition hover:bg-[#ff3495] hover:text-white disabled:cursor-not-allowed disabled:text-black/35"
               >
                 Отклонить
               </button>
@@ -651,7 +653,7 @@ function VacationQueue({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 max-h-[460px] pr-2 overflow-y-auto">
       {users.map((employee) => {
         const declaredDays = employee.vacation_days_declared ?? 0
         const approvedValue = approvedByUser[employee.id] ?? String(declaredDays)
@@ -691,7 +693,7 @@ function VacationQueue({
                 onClick={() =>
                   onModerate(employee.id, approvedDays, 'approved')
                 }
-                className="inline-flex h-10 items-center justify-center rounded-md bg-[#a7fc00] px-4 text-xs font-black uppercase text-black transition hover:bg-[#95e700] disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35"
+                className="inline-flex h-10 items-center justify-center rounded-md bg-black px-4 text-xs font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35 focus:outline-none focus:ring-4 focus:ring-black/20"
               >
                 Одобрить
               </button>
@@ -709,7 +711,7 @@ function VacationQueue({
                 type="button"
                 disabled={actionPending}
                 onClick={() => onModerate(employee.id, 0, 'rejected')}
-                className="inline-flex h-10 items-center justify-center rounded-md border border-[#ff3495]/35 bg-[#ff3495]/10 px-4 text-xs font-black uppercase text-black transition hover:border-[#ff3495] disabled:cursor-not-allowed disabled:text-black/35"
+                className="inline-flex h-10 items-center justify-center rounded-md border border-[#ff3495] bg-white px-4 text-xs font-black uppercase text-[#ff3495] transition hover:bg-[#ff3495] hover:text-white disabled:cursor-not-allowed disabled:text-black/35"
               >
                 Отклонить
               </button>
@@ -758,7 +760,7 @@ function EmptyState({ Icon, title, text }: EmptyStateProps) {
 
 function AlertBlock({ text }: { text: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-[#ff3495]/25 bg-[#ff3495]/10 px-4 py-3 text-sm font-bold text-black">
+    <div className="flex items-center gap-2 rounded-lg border-2 border-[#ff3495] bg-white px-4 py-3 text-sm font-bold text-black">
       <AlertTriangle size={17} aria-hidden="true" className="text-[#ff3495]" />
       {text}
     </div>
@@ -829,7 +831,7 @@ function ChangeRequestQueue({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 max-h-[460px] pr-2 overflow-y-auto">
       {requests.map((request) => {
         const comment = comments[request.id] ?? ''
 
@@ -872,7 +874,7 @@ function ChangeRequestQueue({
                 type="button"
                 disabled={actionPending}
                 onClick={() => onApprove(request.id, comment.trim())}
-                className="inline-flex h-9 items-center justify-center rounded-md bg-[#a7fc00] px-4 text-xs font-black uppercase text-black transition hover:bg-[#95e700] disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35"
+                className="inline-flex h-9 items-center justify-center rounded-md bg-black px-4 text-xs font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35 focus:outline-none focus:ring-4 focus:ring-black/20"
               >
                 Одобрить
               </button>
@@ -880,7 +882,7 @@ function ChangeRequestQueue({
                 type="button"
                 disabled={actionPending}
                 onClick={() => onReject(request.id, comment.trim())}
-                className="inline-flex h-9 items-center justify-center rounded-md border border-[#ff3495]/35 bg-[#ff3495]/10 px-4 text-xs font-black uppercase text-[#ff3495] transition hover:border-[#ff3495] disabled:cursor-not-allowed disabled:text-black/35"
+                className="inline-flex h-9 items-center justify-center rounded-md border border-[#ff3495] bg-white px-4 text-xs font-black uppercase text-[#ff3495] transition hover:bg-[#ff3495] hover:text-white disabled:cursor-not-allowed disabled:text-black/35"
               >
                 Отклонить
               </button>

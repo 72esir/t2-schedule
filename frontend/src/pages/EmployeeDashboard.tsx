@@ -9,6 +9,8 @@ import {
   Save,
   Send,
   ShieldCheck,
+  Sparkles,
+  X,
 } from 'lucide-react'
 import {
   addDays,
@@ -31,7 +33,10 @@ import {
   useMyScheduleValidationQuery,
   useUpdateMyScheduleMutation,
   useCreateChangeRequestMutation,
+  useSuggestedTemplateQuery,
+  useApplySuggestedTemplateMutation,
 } from '../api/queries'
+import { useToast } from '../components/Toast'
 import { backendScheduleToLocal, localScheduleToBackend } from '../api/scheduleMapper'
 import type { User } from '../api/types'
 import ShiftCell from '../components/schedule/ShiftCell'
@@ -69,7 +74,6 @@ export default function EmployeeDashboard({
   user,
   onLogout,
 }: EmployeeDashboardProps) {
-  const [submitNotice, setSubmitNotice] = useState('')
   const periodQuery = useCurrentPeriodQuery(user.is_verified)
   const currentBackendPeriod = periodQuery.data
   const hasActivePeriod = Boolean(currentBackendPeriod)
@@ -85,6 +89,12 @@ export default function EmployeeDashboard({
   )
   const updateScheduleMutation = useUpdateMyScheduleMutation()
   const createRequestMutation = useCreateChangeRequestMutation()
+  const toast = useToast()
+
+  const suggestedQuery = useSuggestedTemplateQuery(user.is_verified && hasActivePeriod)
+  const applySuggestedMutation = useApplySuggestedTemplateMutation()
+  const [hideSuggestion, setHideSuggestion] = useState(false)
+
   const currentPeriod = useScheduleStore((state) => state.currentPeriod)
   const shiftsByDate = useScheduleStore((state) => state.shiftsByDate)
   const setCurrentPeriod = useScheduleStore((state) => state.setCurrentPeriod)
@@ -157,42 +167,50 @@ export default function EmployeeDashboard({
     updateScheduleMutation.isPending || createRequestMutation.isPending
   const canSubmit = canEditSchedule && !isPendingSubmit
 
+  function handleApplySuggestion() {
+    applySuggestedMutation.mutate(undefined, {
+      onSuccess: () => {
+        toast('Расписание заполнено по шаблону из прошлых периодов.')
+        setHideSuggestion(true)
+      },
+      onError: (error) => toast(getApiErrorMessage(error), 'error'),
+    })
+  }
+
   function handleSubmit() {
-    if (!canSubmit) {
-      return
-    }
+    if (!currentBackendPeriod) return
 
-    if (deadlinePassed && !isRequestMode) {
-      setIsRequestMode(true)
-      setSubmitNotice('Напишите комментарий к вашей заявке на изменение графика.')
-      return
-    }
+    if (deadlinePassed) {
+      if (!isRequestMode) {
+        setIsRequestMode(true)
+        return
+      }
 
-    if (deadlinePassed && isRequestMode) {
       if (!requestComment.trim()) {
-        setSubmitNotice('Комментарий обязателен для заявки.')
+        toast('Напишите комментарий к вашей заявке на изменение графика.', 'error')
         return
       }
 
       createRequestMutation.mutate(
         {
-          days: localScheduleToBackend(shiftsByDate).days,
           employee_comment: requestComment.trim(),
+          days: localScheduleToBackend(shiftsByDate).days,
         },
         {
           onSuccess: () => {
-            setSubmitNotice('Заявка на изменение отправлена.')
             setIsRequestMode(false)
+            setRequestComment('')
+            toast('Заявка на изменение отправлена.')
           },
-          onError: (error) => setSubmitNotice(getApiErrorMessage(error)),
+          onError: (error) => toast(getApiErrorMessage(error), 'error'),
         },
       )
       return
     }
 
     updateScheduleMutation.mutate(localScheduleToBackend(shiftsByDate), {
-      onSuccess: () => setSubmitNotice('График сохранён в backend.'),
-      onError: (error) => setSubmitNotice(getApiErrorMessage(error)),
+      onSuccess: () => toast('График успешно сохранён.'),
+      onError: (error) => toast(getApiErrorMessage(error), 'error'),
     })
   }
 
@@ -249,7 +267,7 @@ export default function EmployeeDashboard({
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <img src={t2Logo} alt="t2" className="size-10 rounded-md" />
-              <span className="rounded-md bg-[#a7fc00] px-3 py-2 text-xs font-black uppercase text-black">
+              <span className="rounded-md bg-black px-3 py-2 text-xs font-black uppercase text-white">
                 График сотрудника
               </span>
               <span className="rounded-md border border-black/10 px-3 py-2 text-xs font-black uppercase text-black/55">
@@ -333,13 +351,10 @@ export default function EmployeeDashboard({
                   />
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsRequestMode(false)
-                      setSubmitNotice('')
-                    }}
+                    onClick={() => setIsRequestMode(false)}
                     className="flex h-12 w-12 items-center justify-center rounded-md border border-black/10 text-black/55 hover:bg-black/5 hover:text-black"
                   >
-                    ×
+                    <X size={18} />
                   </button>
                 </div>
               )}
@@ -369,7 +384,7 @@ export default function EmployeeDashboard({
               )}
 
               {currentRequest && currentRequest.status === 'pending' && (
-                <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#a7fc00]/40 bg-[#a7fc00]/20 px-4 py-3 text-sm font-bold text-black">
+                <div className="mb-4 flex items-center gap-2 rounded-lg rounded-lg border border-black/10 bg-[#f7f7f8] px-4 py-3 text-sm font-bold text-black">
                   <FileQuestion
                     size={16}
                     aria-hidden="true"
@@ -380,7 +395,7 @@ export default function EmployeeDashboard({
               )}
 
               {currentRequest && currentRequest.status === 'rejected' && (
-                <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#ff3495]/20 bg-[#ff3495]/10 px-4 py-3 text-sm font-bold text-black">
+                <div className="mb-4 flex items-center gap-2 rounded-lg border-2 border-[#ff3495] bg-white px-4 py-3 text-sm font-bold text-black">
                   <AlertCircle
                     size={16}
                     aria-hidden="true"
@@ -391,13 +406,51 @@ export default function EmployeeDashboard({
               )}
 
               {periodRuleViolations.sixWorkingDaysInRow && (
-                <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#ff3495]/20 bg-[#ff3495]/10 px-4 py-3 text-sm font-bold text-black">
+                <div className="mb-4 flex items-center gap-2 rounded-lg border-2 border-[#ff3495] bg-white px-4 py-3 text-sm font-bold text-black">
                   <AlertCircle
                     size={16}
                     aria-hidden="true"
                     className="shrink-0 text-[#ff3495]"
                   />
                   В периоде есть 7 рабочих дней подряд. Добавьте выходной.
+                </div>
+              )}
+
+              {suggestedQuery.data?.has_suggestion && !hideSuggestion && !deadlinePassed && (
+                <div className="relative mb-6 overflow-hidden rounded-xl border border-black/10 bg-white p-5 shadow-lg transition-all animate-in slide-in-from-top-4 duration-500">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-4 min-w-0">
+                      <div className="grid size-10 shrink-0 sm:size-12 place-items-center rounded-full bg-[#ff3495]/10 text-[#ff3495]">
+                        <Sparkles size={20} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="truncate text-base font-black uppercase tracking-tight text-black">
+                          Найдено похожее расписание
+                        </h3>
+                        <p className="mt-1 text-xs sm:text-sm font-bold text-black/60">
+                          Система нашла {suggestedQuery.data.match_count} прошлых периода с идентичным заполнением. Хотите применить этот шаблон?
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleApplySuggestion}
+                        disabled={applySuggestedMutation.isPending}
+                        className="inline-flex h-12 items-center justify-center rounded-md bg-[#ff3495] px-5 text-sm font-black uppercase text-white shadow-lg shadow-[#ff3495]/20 transition hover:bg-[#e00075] hover:scale-105 active:scale-95 disabled:opacity-50"
+                      >
+                        {applySuggestedMutation.isPending ? 'Применяем...' : 'Применить шаблон'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setHideSuggestion(true)}
+                        className="flex size-12 shrink-0 items-center justify-center rounded-md border border-black/10 text-black/45 hover:bg-black/5 hover:text-black transition-colors"
+                        aria-label="Скрыть предложение"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -416,17 +469,6 @@ export default function EmployeeDashboard({
             </div>
           </div>
         </section>
-
-        <p
-          className={`min-h-6 px-1 text-sm font-bold ${submitNotice
-            ? canSubmit
-              ? 'text-black'
-              : 'text-black/55'
-            : 'text-transparent'
-            }`}
-        >
-          {submitNotice || 'Нет уведомления'}
-        </p>
       </div>
     </main>
   )
@@ -460,7 +502,7 @@ function EmployeeState({
             <button
               type="button"
               onClick={onRetry}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#a7fc00] px-4 text-sm font-black uppercase text-black transition hover:bg-[#95e700]"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-white border border-black/10 px-4 text-sm font-black uppercase text-black transition hover:border-black"
             >
               <RefreshCcw size={16} aria-hidden="true" />
               Обновить
@@ -482,7 +524,7 @@ function EmployeeState({
 
 function InlineAlert({ text }: { text: string }) {
   return (
-    <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#ff3495]/20 bg-[#ff3495]/10 px-4 py-3 text-sm font-bold text-black">
+    <div className="mb-4 flex items-center gap-2 rounded-lg border-2 border-[#ff3495] bg-white px-4 py-3 text-sm font-bold text-black">
       <AlertCircle
         size={16}
         aria-hidden="true"
@@ -579,9 +621,9 @@ function WeeklySummaryBar({ week }: { week: WeekViewModel }) {
           </p>
         </div>
         <span
-          className={`inline-flex h-9 items-center rounded-md px-3 text-xs font-black uppercase ${week.isValid
+          className={`inline-flex h-9 items-center rounded-md px-3 text-[10px] sm:text-xs font-black uppercase ${week.isValid
             ? 'bg-[#a7fc00] text-black'
-            : 'bg-[#ff3495]/10 text-[#b0005a]'
+            : 'bg-white text-[#ff3495] border border-[#ff3495]'
             }`}
         >
           {week.isValid ? 'Норма' : 'Проверьте'}
@@ -619,17 +661,19 @@ function MetricTile({
   return (
     <div
       className={`rounded-lg border p-3 ${tone === 'success'
-        ? 'border-[#a7fc00] bg-[#a7fc00]'
+        ? 'border-[#a7fc00] bg-[#a7fc00] text-black'
         : tone === 'warning'
-          ? 'border-[#ff3495]/25 bg-[#ff3495]/10'
+          ? 'border-2 border-[#ff3495] bg-white'
           : 'border-black/10 bg-[#f7f7f8]'
         }`}
     >
-      <div className="mb-3 grid size-8 place-items-center rounded-md bg-white text-black">
+      <div className={`mb-2 grid size-7 sm:size-8 shrink-0 place-items-center rounded-md bg-white text-black self-start`}>
         <Icon size={16} aria-hidden="true" />
       </div>
-      <p className="text-xs font-black uppercase text-black/45">{label}</p>
-      <p className="mt-1 truncate text-xl font-black leading-none">{value}</p>
+      <div className="min-w-0">
+        <p className={`text-[9px] sm:text-xs font-black uppercase leading-tight truncate text-black/45`}>{label}</p>
+        <p className={`mt-1 truncate text-base sm:text-xl font-black leading-none text-black`}>{value}</p>
+      </div>
     </div>
   )
 }
@@ -679,8 +723,8 @@ function SubmitButton({
       disabled={!canSubmit}
       className={`inline-flex h-12 items-center justify-center gap-2 rounded-md px-5 text-sm font-black uppercase transition focus:outline-none focus:ring-4 ${canSubmit
         ? isRequestMode
-          ? 'bg-black text-white hover:bg-black/85 focus:ring-black/20'
-          : 'bg-[#a7fc00] text-black hover:bg-[#95e700] focus:ring-[#a7fc00]/40'
+          ? 'bg-[#ff3495] text-white hover:bg-[#e00075] focus:ring-[#ff3495]/20'
+          : 'bg-black text-white hover:bg-black/85 focus:ring-black/20'
         : 'cursor-not-allowed border border-black/10 bg-[#f0f0f2] text-black/35 focus:ring-black/5'
         }`}
     >

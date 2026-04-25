@@ -207,18 +207,16 @@ export default function ShiftForm({
                         type,
                       }))
                     }
-                    className={`min-h-24 rounded-lg border p-3 text-left transition focus:outline-none focus:ring-4 focus:ring-[#ff3495]/20 ${
-                      isSelected
-                        ? 'border-black bg-black text-white'
-                        : 'border-black/10 bg-white text-black hover:border-black/35'
-                    }`}
+                    className={`min-h-24 rounded-lg border p-3 text-left transition focus:outline-none focus:ring-4 focus:ring-[#ff3495]/20 ${isSelected
+                      ? 'border-black bg-black text-white'
+                      : 'border-black/10 bg-white text-black hover:border-black/35'
+                      }`}
                   >
                     <span
-                      className={`mb-3 grid size-8 place-items-center rounded-md ${
-                        isSelected
-                          ? 'bg-[#a7fc00] text-black'
-                          : 'bg-[#f0f0f2] text-black'
-                      }`}
+                      className={`mb-3 grid size-8 place-items-center rounded-md ${isSelected
+                        ? 'bg-[#ff3495] text-white'
+                        : 'bg-[#f0f0f2] text-black'
+                        }`}
                     >
                       <Icon size={17} aria-hidden="true" />
                     </span>
@@ -226,9 +224,8 @@ export default function ShiftForm({
                       {label}
                     </span>
                     <span
-                      className={`mt-1 block text-xs font-medium ${
-                        isSelected ? 'text-white/58' : 'text-black/50'
-                      }`}
+                      className={`mt-1 block text-xs font-medium ${isSelected ? 'text-white/58' : 'text-black/50'
+                        }`}
                     >
                       {description}
                     </span>
@@ -346,7 +343,7 @@ export default function ShiftForm({
           </button>
           <button
             type="submit"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#a7fc00] px-4 text-sm font-black uppercase text-black transition hover:bg-[#95e700] focus:outline-none focus:ring-4 focus:ring-[#a7fc00]/40"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-black px-4 text-sm font-black uppercase text-white transition hover:bg-black/85 focus:outline-none focus:ring-4 focus:ring-black/20"
           >
             <Save size={16} aria-hidden="true" />
             Сохранить

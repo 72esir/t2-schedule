@@ -40,7 +40,7 @@ const shiftVisualConfig: Record<ShiftType, ShiftVisualConfig> = {
     label: 'Обычная',
     Icon: Clock,
     cellClassName: 'border-black bg-black text-white',
-    iconClassName: 'bg-[#a7fc00] text-black',
+    iconClassName: 'bg-white text-black',
     metaClassName: 'text-white/62',
   },
   split: {
@@ -54,7 +54,7 @@ const shiftVisualConfig: Record<ShiftType, ShiftVisualConfig> = {
     label: 'Выходной',
     Icon: CalendarX,
     cellClassName: 'border-black/10 bg-white text-black',
-    iconClassName: 'bg-[#a7fc00] text-black',
+    iconClassName: 'bg-black/5 text-black',
     metaClassName: 'text-black/45',
   },
   vacation: {
@@ -101,21 +101,21 @@ export default function ShiftCell({
         }}
         aria-disabled={isDisabled}
         className={classNames(
-          'group grid min-h-32 w-full grid-rows-[auto_1fr_auto] rounded-lg border p-3 text-left shadow-sm transition duration-200 focus:outline-none focus:ring-4 focus:ring-[#ff3495]/20',
+          'group flex aspect-square w-full flex-col justify-between overflow-hidden rounded-lg border p-2 sm:p-3 text-left shadow-sm transition duration-200 focus:outline-none focus:ring-4 focus:ring-[#ff3495]/20',
           visualConfig.cellClassName,
           isMuted ? 'opacity-45' : '',
           isDisabled ? 'cursor-not-allowed' : '',
         )}
         aria-label={`Редактировать смену за ${dateKey}`}
       >
-        <span className="flex items-start justify-between gap-2">
-          <span>
-            <span className="block text-2xl font-black leading-none">
+        <span className="flex items-start justify-between gap-1 sm:gap-2">
+          <span className="min-w-0">
+            <span className="block text-xl sm:text-2xl font-black leading-none truncate">
               {format(normalizedDate, 'd')}
             </span>
             <span
               className={classNames(
-                'mt-1 block text-xs font-black uppercase',
+                'mt-0.5 sm:mt-1 block text-[10px] sm:text-xs font-black uppercase truncate',
                 visualConfig.metaClassName,
               )}
             >
@@ -125,22 +125,22 @@ export default function ShiftCell({
 
           <span
             className={classNames(
-              'grid size-9 shrink-0 place-items-center rounded-md transition group-hover:scale-105',
+              'grid size-7 sm:size-9 shrink-0 place-items-center rounded-md transition group-hover:scale-105',
               visualConfig.iconClassName,
             )}
             aria-hidden="true"
           >
-            <Icon size={17} />
+            <Icon size={16} />
           </span>
         </span>
 
-        <span className="mt-4 min-h-10">
-          <span className="block text-sm font-black uppercase leading-tight">
+        <span className="mt-auto mb-1 sm:mb-2 min-h-0 min-w-0 flex-1">
+          <span className="hidden sm:block text-[10px] sm:text-sm font-black uppercase leading-tight truncate">
             {visualConfig.label}
           </span>
           <span
             className={classNames(
-              'mt-1 line-clamp-2 block text-xs font-semibold leading-snug',
+              'mt-1 sm:mt-1 line-clamp-1 sm:line-clamp-2 block text-[9px] sm:text-xs font-semibold leading-tight',
               visualConfig.metaClassName,
             )}
           >
@@ -148,14 +148,14 @@ export default function ShiftCell({
           </span>
         </span>
 
-        <span className="mt-3 flex items-end justify-between gap-2">
+        <span className="mt-auto flex items-end justify-between gap-1 overflow-hidden shrink-0">
           <span
             className={classNames(
-              'inline-flex h-7 items-center rounded-md px-2 text-xs font-black uppercase',
+              'inline-flex h-5 sm:h-7 shrink-0 items-center rounded-md px-1 sm:px-2 text-[9px] sm:text-xs font-black uppercase',
               shift?.type === 'normal' || shift?.type === 'split'
                 ? 'bg-white text-black'
                 : 'bg-black/5 text-black/45',
-              shift?.type === 'normal' ? 'bg-[#a7fc00]' : '',
+              shift?.type === 'normal' || shift?.type === 'split' ? 'bg-[#a7fc00] text-black' : '',
             )}
           >
             {shift?.type === 'normal' || shift?.type === 'split'
@@ -165,10 +165,10 @@ export default function ShiftCell({
 
           {isCurrentDay && (
             <span
-              className="grid size-7 place-items-center rounded-md bg-[#a7fc00] text-black"
+              className="grid size-5 sm:size-7 shrink-0 place-items-center rounded-md bg-[#ff3495] text-white"
               aria-label="Сегодня"
             >
-              <Sparkles size={14} aria-hidden="true" />
+              <Sparkles className="size-3 sm:size-4" aria-hidden="true" />
             </span>
           )}
         </span>
