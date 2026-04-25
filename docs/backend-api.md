@@ -658,6 +658,28 @@ Response:
 
 - binary `.xlsx` file
 
+Workbook contents:
+
+- `Schedule` sheet:
+  - one row per employee
+  - total hours
+  - vacation days count
+  - violation codes
+  - one column per day of the selected period
+- `Summary` sheet:
+  - one row per employee
+  - submitted or not
+  - total hours
+  - vacation days count
+  - max work streak
+  - weekly hours summary
+  - violation count and codes
+
+Notes:
+
+- only verified employees from the current manager alliance are exported
+- rows with validation violations are highlighted
+
 ## Frontend integration notes
 
 - After login always call `/auth/me`.

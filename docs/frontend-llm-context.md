@@ -72,6 +72,7 @@ Important:
 - Employee validation warnings
 - Pending vacation moderation queue
 - Vacation moderation controls
+- Excel export with hours and violations
 
 ## Vacation moderation UI
 
