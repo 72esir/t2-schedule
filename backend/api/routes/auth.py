@@ -13,7 +13,8 @@ from backend.core import (
 )
 from backend.db import get_db
 from backend.models import User, UserRole, VacationDaysStatus, VerificationToken
-from backend.schemas import EmployeeRegisterRequest, Token, UserMe, VerificationRequest
+from backend.schemas import EmployeeRegisterRequest, Token, UserMe, UserStreakOut, VerificationRequest
+from backend.services import build_user_streak
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -104,3 +105,11 @@ def verify_account(payload: VerificationRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserMe)
 def get_me(current_user: User = Depends(get_current_active_user)):
     return current_user
+
+
+@router.get("/me/streak", response_model=UserStreakOut)
+def get_my_streak(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    return UserStreakOut(**build_user_streak(db, user=current_user))
