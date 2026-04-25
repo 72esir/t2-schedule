@@ -234,15 +234,15 @@ export const mockManagerApi = {
       employees_with_violations_count: hasViolations ? 1 : 0,
       problem_employees: hasViolations
         ? [
-            {
-              user_id: demoUsers.user.id,
-              full_name: demoUsers.user.full_name ?? 'Сотрудник',
-              email: demoUsers.user.email,
-              violation_count: validation.violations.length,
-              violation_codes: validation.violations.map((item) => item.code),
-              summary: validation.summary,
-            },
-          ]
+          {
+            user_id: demoUsers.user.id,
+            full_name: demoUsers.user.full_name ?? 'Сотрудник',
+            email: demoUsers.user.email,
+            violation_count: validation.violations.length,
+            violation_codes: validation.violations.map((item) => item.code),
+            summary: validation.summary,
+          },
+        ]
         : [],
     })
   },
@@ -341,7 +341,19 @@ function readDemoState(): DemoState {
   }
 
   try {
-    return JSON.parse(storedState) as DemoState
+    const parsed = JSON.parse(storedState) as DemoState
+
+    // Auto-renew: if the stored deadline is already in the past, reset to a
+    // fresh state so the demo doesn't silently open in read-only mode.
+    if (new Date(parsed.period.deadline) < new Date()) {
+      const freshState = createInitialState()
+
+      writeDemoState(freshState)
+
+      return freshState
+    }
+
+    return parsed
   } catch {
     const initialState = createInitialState()
 
@@ -508,15 +520,15 @@ function buildScheduleValidation(
   const streakViolation =
     summary.max_work_streak > 6
       ? [
-          {
-            code: 'WORK_STREAK_OVER_6',
-            level: 'warning',
-            message: 'Больше 6 рабочих дней подряд',
-            context: {
-              max_work_streak: summary.max_work_streak,
-            },
+        {
+          code: 'WORK_STREAK_OVER_6',
+          level: 'warning',
+          message: 'Больше 6 рабочих дней подряд',
+          context: {
+            max_work_streak: summary.max_work_streak,
           },
-        ]
+        },
+      ]
       : []
   const violations = [...weeklyViolations, ...streakViolation]
 
@@ -535,7 +547,7 @@ function getDayHours(day: BackendScheduleByDate[string]): number {
   if (day.status === 'split') {
     return roundHours(
       getIntervalHours(day.meta.splitStart1, day.meta.splitEnd1) +
-        getIntervalHours(day.meta.splitStart2, day.meta.splitEnd2),
+      getIntervalHours(day.meta.splitStart2, day.meta.splitEnd2),
     )
   }
 
