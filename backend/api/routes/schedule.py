@@ -16,6 +16,7 @@ from backend.models import (
     UserRole,
 )
 from backend.schemas import (
+    MyScheduleState,
     ScheduleBulkUpdate,
     ScheduleChangeRequestCreate,
     ScheduleChangeRequestOut,
@@ -124,6 +125,17 @@ def _replace_schedule_entries(
         )
 
 
+def _build_schedule_state(entries: List[ScheduleEntry]) -> MyScheduleState:
+    if not entries:
+        return MyScheduleState(days={}, last_saved_at=None)
+
+    last_saved_at = max(entry.updated_at or entry.created_at for entry in entries)
+    return MyScheduleState(
+        days={entry.day: _deserialize_day_payload(entry.status, entry.meta) for entry in entries},
+        last_saved_at=last_saved_at,
+    )
+
+
 @router.get("/me", response_model=Dict[date, ScheduleDayPayload])
 def get_my_schedule(
     current_user: User = Depends(get_current_verified_user),
@@ -142,6 +154,26 @@ def get_my_schedule(
         .all()
     )
     return {entry.day: _deserialize_day_payload(entry.status, entry.meta) for entry in entries}
+
+
+@router.get("/me/state", response_model=MyScheduleState)
+def get_my_schedule_state(
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
+):
+    current_period = get_current_period(db, current_user.alliance)
+    if not current_period:
+        return MyScheduleState(days={}, last_saved_at=None)
+
+    entries: List[ScheduleEntry] = (
+        db.query(ScheduleEntry)
+        .filter(
+            ScheduleEntry.user_id == current_user.id,
+            ScheduleEntry.period_id == current_period.id,
+        )
+        .all()
+    )
+    return _build_schedule_state(entries)
 
 
 @router.put("/me", response_model=Dict[date, ScheduleDayPayload])

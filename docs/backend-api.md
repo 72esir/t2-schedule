@@ -343,6 +343,35 @@ Returns current user's schedule for active alliance period.
 Auth required: yes
 Role: verified user
 
+### GET `/schedules/me/state`
+
+Returns current user's schedule plus autosave metadata for the active alliance period.
+
+Auth required: yes
+Role: verified user
+
+Response:
+
+```json
+{
+  "days": {
+    "2026-05-01": {
+      "status": "shift",
+      "meta": {
+        "shiftStart": "09:00",
+        "shiftEnd": "18:00"
+      }
+    }
+  },
+  "last_saved_at": "2026-04-25T15:32:11Z"
+}
+```
+
+Notes:
+
+- `last_saved_at` is `null` when the user has no saved schedule for the active period
+- frontend can use this endpoint for autosave UI like `Saved at 15:32`
+
 ### PUT `/schedules/me`
 
 Replaces current user's schedule for active alliance period.

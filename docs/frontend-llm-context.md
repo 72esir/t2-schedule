@@ -55,6 +55,7 @@ Important:
 - Read-only state after deadline
 - Post-deadline schedule change request form
 - View own post-deadline request status
+- Autosave status based on `GET /schedules/me/state`
 - Hours summary by day/week/period
 - Validation warnings for weekly hours and work streak
 
@@ -143,6 +144,21 @@ Important:
 
 - employee can send only one request per active period
 - approving a request replaces the stored schedule with the proposed version
+
+## Autosave flow
+
+Recommended frontend behavior before deadline:
+
+1. Load initial schedule via `GET /schedules/me/state`
+2. Keep local edits in form state
+3. Debounce calls to `PUT /schedules/me`
+4. After a successful save, refresh `GET /schedules/me/state` or locally update the save indicator
+
+Use `last_saved_at` to show:
+
+- `Saving...`
+- `Saved at 15:32`
+- `Save failed`
 
 ## API reference
 
