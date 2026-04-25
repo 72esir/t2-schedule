@@ -66,6 +66,26 @@ class VerificationRequest(BaseModel):
     token: str
 
 
+class ManagerProblemEmployeeOut(BaseModel):
+    user_id: int
+    full_name: str
+    email: Optional[EmailStr] = None
+    violation_count: int
+    violation_codes: list[str]
+    summary: Optional["ScheduleSummary"] = None
+
+
+class ManagerDashboardOut(BaseModel):
+    current_period: Optional["CollectionPeriodOut"] = None
+    total_employees: int
+    submitted_count: int
+    pending_count: int
+    pending_verification_count: int
+    pending_vacation_moderation_count: int
+    employees_with_violations_count: int
+    problem_employees: list[ManagerProblemEmployeeOut]
+
+
 def _parse_time_value(value: str) -> tuple[int, int]:
     try:
         hours_str, minutes_str = value.split(":")

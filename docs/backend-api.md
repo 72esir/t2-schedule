@@ -471,6 +471,62 @@ Roles: `manager`
 
 ## Manager endpoints
 
+### GET `/manager/dashboard`
+
+Returns one aggregated dashboard payload for current manager alliance.
+
+Auth required: yes
+Roles: `manager`
+
+Response:
+
+```json
+{
+  "current_period": {
+    "id": 3,
+    "alliance": "Alliance 1",
+    "period_start": "2026-05-01",
+    "period_end": "2026-05-14",
+    "deadline": "2026-04-30T18:00:00Z",
+    "is_open": true,
+    "created_at": "2026-04-25T10:00:00Z",
+    "updated_at": "2026-04-25T10:00:00Z"
+  },
+  "total_employees": 45,
+  "submitted_count": 30,
+  "pending_count": 15,
+  "pending_verification_count": 4,
+  "pending_vacation_moderation_count": 6,
+  "employees_with_violations_count": 5,
+  "problem_employees": [
+    {
+      "user_id": 12,
+      "full_name": "Ivan Ivanov",
+      "email": "ivan@example.com",
+      "violation_count": 2,
+      "violation_codes": ["WEEKLY_HOURS_UNDER", "WORK_STREAK_OVER_6"],
+      "summary": {
+        "daily_hours": {
+          "2026-05-01": 8.0
+        },
+        "weekly_hours": {
+          "2026-04-27": 36.0
+        },
+        "period_total_hours": 36.0,
+        "vacation_days_count": 0,
+        "max_work_streak": 7
+      }
+    }
+  ]
+}
+```
+
+Notes:
+
+- `current_period` can be `null` if there is no active period
+- `pending_count` is based on verified employees who have not submitted schedule entries in the active period
+- `problem_employees` includes only employees from the current alliance who already have schedule entries and at least one validation violation
+
 ### GET `/manager/users`
 
 Returns users visible to current manager.

@@ -60,6 +60,7 @@ Important:
 
 - Login
 - Dashboard with current period stats
+- Dashboard summary via `GET /manager/dashboard`
 - Create period
 - Create period from template: `week`, `two_weeks`, `month`, `custom`
 - Close period
@@ -99,6 +100,23 @@ Recommended API for that screen:
 
 - `GET /manager/users/pending-verification`
 - `PUT /manager/users/{user_id}/verify`
+
+## Manager dashboard UI
+
+Recommended main query for the manager home screen:
+
+- `GET /manager/dashboard`
+
+It already returns:
+
+- current active period
+- total employees
+- submitted vs pending counts
+- pending verification count
+- pending vacation moderation count
+- problem employees with validation violations
+
+Frontend can use this single response for dashboard cards and a "problem schedules" block.
 
 ## API reference
 
