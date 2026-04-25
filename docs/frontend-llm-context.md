@@ -109,6 +109,7 @@ Recommended API for that screen:
 
 - `GET /manager/users/pending-verification`
 - `PUT /manager/users/{user_id}/verify`
+- `DELETE /manager/users/{user_id}/reject`
 
 ## Manager dashboard UI
 

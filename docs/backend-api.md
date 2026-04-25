@@ -731,6 +731,10 @@ Response:
 
 Marks user as verified.
 
+### DELETE `/manager/users/{user_id}/reject`
+
+Deletes a non-verified employee from current manager alliance.
+
 ### PUT `/manager/users/{user_id}/vacation-days`
 
 Moderates employee vacation days.

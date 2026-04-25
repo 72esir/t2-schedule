@@ -389,6 +389,26 @@ def verify_user(
     return user
 
 
+@router.delete("/users/{user_id}/reject", status_code=204)
+def reject_user_registration(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_manager),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Р СџР С•Р В»РЎРЉР В·Р С•Р Р†Р В°РЎвЂљР ВµР В»РЎРЉ Р Р…Р Вµ Р Р…Р В°Р в„–Р Т‘Р ВµР Р…")
+    if user.alliance != current_user.alliance:
+        raise HTTPException(status_code=403, detail="Р СњР ВµРЎвЂљ Р Т‘Р С•РЎРѓРЎвЂљРЎС“Р С—Р В° Р С” РЎРѓР С•РЎвЂљРЎР‚РЎС“Р Т‘Р Р…Р С‘Р С”РЎС“ Р С‘Р В· Р Т‘РЎР‚РЎС“Р С–Р С•Р С–Р С• Р В°Р В»РЎРЉРЎРЏР Р…РЎРѓР В°")
+    if user.is_verified:
+        raise HTTPException(status_code=400, detail="Cannot reject an already verified user")
+    if user.role != UserRole.USER:
+        raise HTTPException(status_code=400, detail="Only employee registrations can be rejected")
+
+    db.delete(user)
+    db.commit()
+
+
 @router.put("/users/{user_id}/vacation-days", response_model=UserOut)
 def moderate_vacation_days(
     user_id: int,
