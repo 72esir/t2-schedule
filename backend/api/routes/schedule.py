@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -57,6 +57,10 @@ def update_my_schedule(
     if not current_period:
         raise HTTPException(status_code=400, detail="Нет активного периода сбора")
 
+    now = datetime.now(timezone.utc)
+    if current_period.deadline < now:
+        raise HTTPException(status_code=403, detail="Срок редактирования расписания истек")
+
     for day in payload.days.keys():
         if day < current_period.period_start or day > current_period.period_end:
             raise HTTPException(
@@ -99,7 +103,7 @@ def get_schedule_for_user(
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    if current_user.role == UserRole.MANAGER and user.alliance != current_user.alliance:
+    if user.alliance != current_user.alliance:
         raise HTTPException(status_code=403, detail="Нет доступа к сотруднику из другого альянса")
 
     current_period = get_current_period(db, user.alliance)

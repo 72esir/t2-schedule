@@ -212,6 +212,11 @@ Request:
 }
 ```
 
+Deadline rule:
+
+- Employee can update schedule only until the active period `deadline`.
+- If deadline has passed, backend returns `403`.
+
 ### GET `/schedules/by-user/{user_id}`
 
 Returns one employee schedule for manager review.

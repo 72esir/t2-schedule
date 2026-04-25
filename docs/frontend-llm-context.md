@@ -52,6 +52,7 @@ Important:
 - Schedule calendar for active period
 - Save/update schedule
 - Read-only empty state if no active period exists
+- Read-only state after deadline
 
 ## Required manager screens
 
