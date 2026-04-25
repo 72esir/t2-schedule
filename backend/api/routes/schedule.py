@@ -12,8 +12,19 @@ from backend.schemas import ScheduleBulkUpdate, ScheduleDayPayload, ScheduleForU
 router = APIRouter(prefix="/schedules", tags=["schedules"])
 
 
-def get_current_period(db: Session) -> Optional[CollectionPeriod]:
-    return db.query(CollectionPeriod).filter(CollectionPeriod.is_open.is_(True)).first()
+def get_current_period(db: Session, alliance: Optional[str]) -> Optional[CollectionPeriod]:
+    if not alliance:
+        return None
+
+    return (
+        db.query(CollectionPeriod)
+        .filter(
+            CollectionPeriod.is_open.is_(True),
+            CollectionPeriod.alliance == alliance,
+        )
+        .order_by(CollectionPeriod.created_at.desc())
+        .first()
+    )
 
 
 @router.get("/me", response_model=Dict[date, ScheduleDayPayload])
@@ -21,7 +32,7 @@ def get_my_schedule(
     current_user: User = Depends(get_current_verified_user),
     db: Session = Depends(get_db),
 ):
-    current_period = get_current_period(db)
+    current_period = get_current_period(db, current_user.alliance)
     if not current_period:
         return {}
 
@@ -42,13 +53,16 @@ def update_my_schedule(
     current_user: User = Depends(get_current_verified_user),
     db: Session = Depends(get_db),
 ):
-    current_period = get_current_period(db)
+    current_period = get_current_period(db, current_user.alliance)
     if not current_period:
         raise HTTPException(status_code=400, detail="Нет активного периода сбора")
 
     for day in payload.days.keys():
         if day < current_period.period_start or day > current_period.period_end:
-            raise HTTPException(status_code=400, detail=f"Дата {day} выходит за границы текущего периода")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Дата {day} выходит за границы текущего периода",
+            )
 
     db.query(ScheduleEntry).filter(
         ScheduleEntry.user_id == current_user.id,
@@ -78,14 +92,17 @@ def update_my_schedule(
 @router.get("/by-user/{user_id}", response_model=ScheduleForUser)
 def get_schedule_for_user(
     user_id: int,
-    _: User = Depends(require_role(UserRole.MANAGER)),
+    current_user: User = Depends(require_role(UserRole.MANAGER)),
     db: Session = Depends(get_db),
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    current_period = get_current_period(db)
+    if current_user.role == UserRole.MANAGER and user.alliance != current_user.alliance:
+        raise HTTPException(status_code=403, detail="Нет доступа к сотруднику из другого альянса")
+
+    current_period = get_current_period(db, user.alliance)
     if not current_period:
         return ScheduleForUser(user=user, entries={}, vacation_work=None)
 
@@ -100,4 +117,3 @@ def get_schedule_for_user(
     schedule_map = {entry.day: ScheduleDayPayload(status=entry.status, meta=entry.meta) for entry in entries}
 
     return ScheduleForUser(user=user, entries=schedule_map, vacation_work=None)
-
