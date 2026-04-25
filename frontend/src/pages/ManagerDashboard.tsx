@@ -37,6 +37,7 @@ import type {
   PendingScheduleChangeRequest,
 } from '../api/types'
 import t2Logo from '../assets/t2-logo.svg'
+import { useToast } from '../components/Toast'
 
 interface ManagerDashboardProps {
   user: User
@@ -93,7 +94,7 @@ export default function ManagerDashboard({
   const [periodStart, setPeriodStart] = useState(toDateInput(new Date()))
   const [periodEnd, setPeriodEnd] = useState(toDateInput(addDays(new Date(), 13)))
   const [deadline, setDeadline] = useState(toDateTimeInput(new Date()))
-  const [notice, setNotice] = useState('')
+  const toast = useToast()
   const dashboard = dashboardQuery.data
   const currentPeriod = dashboard?.current_period ?? null
   const templates = templatesQuery.data?.length
@@ -102,7 +103,6 @@ export default function ManagerDashboard({
 
   function handleCreatePeriod(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setNotice('')
 
     createPeriodMutation.mutate(
       {
@@ -112,8 +112,8 @@ export default function ManagerDashboard({
         deadline: new Date(deadline).toISOString(),
       },
       {
-        onSuccess: () => setNotice('Период создан. Предыдущий активный период закрыт.'),
-        onError: (error) => setNotice(getApiErrorMessage(error)),
+        onSuccess: () => toast('Период создан. Предыдущий активный период закрыт.'),
+        onError: (error) => toast(getApiErrorMessage(error), 'error'),
       },
     )
   }
@@ -123,18 +123,16 @@ export default function ManagerDashboard({
       return
     }
 
-    setNotice('')
     closePeriodMutation.mutate(currentPeriod.id, {
-      onSuccess: () => setNotice('Период закрыт.'),
-      onError: (error) => setNotice(getApiErrorMessage(error)),
+      onSuccess: () => toast('Период закрыт.'),
+      onError: (error) => toast(getApiErrorMessage(error), 'error'),
     })
   }
 
   function handleVerifyUser(userId: number) {
-    setNotice('')
     verifyUserMutation.mutate(userId, {
-      onSuccess: () => setNotice('Сотрудник подтверждён.'),
-      onError: (error) => setNotice(getApiErrorMessage(error)),
+      onSuccess: () => toast('Сотрудник подтверждён.'),
+      onError: (error) => toast(getApiErrorMessage(error), 'error'),
     })
   }
 
@@ -142,10 +140,9 @@ export default function ManagerDashboard({
     if (!window.confirm('Вы уверены, что хотите отклонить и удалить данного сотрудника?')) {
       return
     }
-    setNotice('')
     rejectUserMutation.mutate(userId, {
-      onSuccess: () => setNotice('Заявка на регистрацию отклонена.'),
-      onError: (error) => setNotice(getApiErrorMessage(error)),
+      onSuccess: () => toast('Заявка на регистрацию отклонена.', 'error'),
+      onError: (error) => toast(getApiErrorMessage(error), 'error'),
     })
   }
 
@@ -154,7 +151,6 @@ export default function ManagerDashboard({
     approvedDays: number,
     status: VacationDaysStatus,
   ) {
-    setNotice('')
     moderateVacationMutation.mutate(
       {
         userId,
@@ -164,48 +160,44 @@ export default function ManagerDashboard({
         },
       },
       {
-        onSuccess: () => setNotice('Дни отпуска обновлены.'),
-        onError: (error) => setNotice(getApiErrorMessage(error)),
+        onSuccess: () => toast('Дни отпуска обновлены.'),
+        onError: (error) => toast(getApiErrorMessage(error), 'error'),
       },
     )
   }
 
   function handleApproveChangeRequest(requestId: number, managerComment: string) {
-    setNotice('')
     approveChangeRequestMutation.mutate(
       { requestId, payload: { manager_comment: managerComment } },
       {
-        onSuccess: () => setNotice('Заявка на изменение одобрена.'),
-        onError: (error) => setNotice(getApiErrorMessage(error)),
+        onSuccess: () => toast('Заявка на изменение одобрена.'),
+        onError: (error) => toast(getApiErrorMessage(error), 'error'),
       },
     )
   }
 
   function handleRejectChangeRequest(requestId: number, managerComment: string) {
-    setNotice('')
     rejectChangeRequestMutation.mutate(
       { requestId, payload: { manager_comment: managerComment } },
       {
-        onSuccess: () => setNotice('Заявка на изменение отклонена.'),
-        onError: (error) => setNotice(getApiErrorMessage(error)),
+        onSuccess: () => toast('Заявка на изменение отклонена.', 'error'),
+        onError: (error) => toast(getApiErrorMessage(error), 'error'),
       },
     )
   }
 
   function handleExportSchedule() {
-    setNotice('')
     exportScheduleMutation.mutate(currentPeriod?.id, {
       onSuccess: ({ blob, filename }) => {
         const fileUrl = URL.createObjectURL(blob)
         const link = document.createElement('a')
-
         link.href = fileUrl
         link.download = filename
         link.click()
         URL.revokeObjectURL(fileUrl)
-        setNotice('Экспорт сформирован.')
+        toast('Экспорт сформирован.')
       },
-      onError: (error) => setNotice(getApiErrorMessage(error)),
+      onError: (error) => toast(getApiErrorMessage(error), 'error'),
     })
   }
 
@@ -221,7 +213,7 @@ export default function ManagerDashboard({
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <img src={t2Logo} alt="t2" className="size-10 rounded-md" />
-              <span className="rounded-md bg-[#a7fc00] px-3 py-2 text-xs font-black uppercase text-black">
+              <span className="rounded-md bg-black px-3 py-2 text-xs font-black uppercase text-white">
                 Панель менеджера
               </span>
               <span className="rounded-md border border-black/10 px-3 py-2 text-xs font-black uppercase text-black/55">
@@ -258,7 +250,7 @@ export default function ManagerDashboard({
           <AlertBlock text={getApiErrorMessage(dashboardQuery.error)} />
         )}
 
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid grid-cols-4 gap-2 md:gap-3">
           <MetricTile
             Icon={Users}
             label="Сотрудники"
@@ -286,8 +278,8 @@ export default function ManagerDashboard({
           />
         </section>
 
-        <section className="grid flex-1 gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-          <div className="space-y-4">
+        <section className="grid flex-1 gap-4 xl:grid-cols-[1fr_1fr] items-start">
+          <div className="grid gap-4 h-full grid-rows-[auto_auto_1fr]">
             <Panel title="Текущий период">
               {currentPeriod ? (
                 <div className="space-y-4">
@@ -304,7 +296,7 @@ export default function ManagerDashboard({
                       type="button"
                       onClick={handleExportSchedule}
                       disabled={isBusy}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#a7fc00] px-4 text-sm font-black uppercase text-black transition hover:bg-[#95e700] disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35"
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-black px-4 text-sm font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35 focus:outline-none focus:ring-4 focus:ring-black/20"
                     >
                       <Download size={16} aria-hidden="true" />
                       Экспорт
@@ -417,11 +409,11 @@ export default function ManagerDashboard({
 
             <Panel title="Проблемные графики">
               {dashboard?.problem_employees.length ? (
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-[460px] pr-2 overflow-y-auto">
                   {dashboard.problem_employees.map((employee) => (
                     <div
                       key={employee.user_id}
-                      className="rounded-lg border border-[#ff3495]/20 bg-[#ff3495]/10 p-3"
+                      className="rounded-lg border-2 border-[#ff3495] bg-white p-3"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
@@ -484,12 +476,6 @@ export default function ManagerDashboard({
           </div>
         </section>
 
-        <p
-          className={`min-h-6 px-1 text-sm font-bold ${notice ? 'text-black' : 'text-transparent'
-            }`}
-        >
-          {notice || 'Нет уведомления'}
-        </p>
       </div>
     </main>
   )
@@ -503,7 +489,7 @@ interface PanelProps {
 function Panel({ title, children }: PanelProps) {
   return (
     <section className="rounded-lg border border-black/10 bg-white p-4 shadow-sm lg:p-5">
-      <h2 className="mb-4 text-lg font-black uppercase leading-none">{title}</h2>
+      <h2 className="mb-4 text-base sm:text-lg font-black uppercase leading-none">{title}</h2>
       {children}
     </section>
   )
@@ -524,18 +510,20 @@ function MetricTile({
 }: MetricTileProps) {
   return (
     <div
-      className={`rounded-lg border p-4 shadow-sm ${tone === 'success'
-        ? 'border-[#a7fc00] bg-[#a7fc00]'
+      className={`rounded-lg border p-2 sm:p-5 shadow-sm flex flex-col justify-between ${tone === 'success'
+        ? 'border-[#a7fc00] bg-[#a7fc00] text-black'
         : tone === 'warning'
-          ? 'border-[#ff3495]/25 bg-[#ff3495]/10'
+          ? 'border-2 border-[#ff3495] bg-white'
           : 'border-black/10 bg-white'
         }`}
     >
-      <div className="mb-3 grid size-9 place-items-center rounded-md bg-white text-black">
-        <Icon size={17} aria-hidden="true" />
+      <div className="mb-2 grid size-8 sm:size-10 shrink-0 place-items-center rounded-md bg-white text-black self-start">
+        <Icon size={18} aria-hidden="true" />
       </div>
-      <p className="text-xs font-black uppercase text-black/45">{label}</p>
-      <p className="mt-1 truncate text-2xl font-black leading-none">{value}</p>
+      <div className="min-w-0">
+        <p className="text-[9px] sm:text-xs font-black uppercase text-black/45 leading-tight truncate">{label}</p>
+        <p className="mt-1 truncate text-base sm:text-3xl font-black leading-none">{value}</p>
+      </div>
     </div>
   )
 }
@@ -603,7 +591,7 @@ function UserQueue({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 max-h-[460px] pr-2 overflow-y-auto">
       {users.map((employee) => (
         <div
           key={employee.id}
@@ -624,7 +612,7 @@ function UserQueue({
                 type="button"
                 disabled={actionPending}
                 onClick={() => onReject(employee)}
-                className="inline-flex h-10 items-center justify-center rounded-md border border-[#ff3495]/35 bg-[#ff3495]/10 px-4 text-xs font-black uppercase text-[#ff3495] transition hover:border-[#ff3495] disabled:cursor-not-allowed disabled:text-black/35"
+                className="inline-flex h-10 items-center justify-center rounded-md border border-[#ff3495] bg-white px-4 text-xs font-black uppercase text-[#ff3495] transition hover:bg-[#ff3495] hover:text-white disabled:cursor-not-allowed disabled:text-black/35"
               >
                 Отклонить
               </button>
@@ -665,7 +653,7 @@ function VacationQueue({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 max-h-[460px] pr-2 overflow-y-auto">
       {users.map((employee) => {
         const declaredDays = employee.vacation_days_declared ?? 0
         const approvedValue = approvedByUser[employee.id] ?? String(declaredDays)
@@ -705,7 +693,7 @@ function VacationQueue({
                 onClick={() =>
                   onModerate(employee.id, approvedDays, 'approved')
                 }
-                className="inline-flex h-10 items-center justify-center rounded-md bg-[#a7fc00] px-4 text-xs font-black uppercase text-black transition hover:bg-[#95e700] disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35"
+                className="inline-flex h-10 items-center justify-center rounded-md bg-black px-4 text-xs font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35 focus:outline-none focus:ring-4 focus:ring-black/20"
               >
                 Одобрить
               </button>
@@ -723,7 +711,7 @@ function VacationQueue({
                 type="button"
                 disabled={actionPending}
                 onClick={() => onModerate(employee.id, 0, 'rejected')}
-                className="inline-flex h-10 items-center justify-center rounded-md border border-[#ff3495]/35 bg-[#ff3495]/10 px-4 text-xs font-black uppercase text-black transition hover:border-[#ff3495] disabled:cursor-not-allowed disabled:text-black/35"
+                className="inline-flex h-10 items-center justify-center rounded-md border border-[#ff3495] bg-white px-4 text-xs font-black uppercase text-[#ff3495] transition hover:bg-[#ff3495] hover:text-white disabled:cursor-not-allowed disabled:text-black/35"
               >
                 Отклонить
               </button>
@@ -772,7 +760,7 @@ function EmptyState({ Icon, title, text }: EmptyStateProps) {
 
 function AlertBlock({ text }: { text: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-[#ff3495]/25 bg-[#ff3495]/10 px-4 py-3 text-sm font-bold text-black">
+    <div className="flex items-center gap-2 rounded-lg border-2 border-[#ff3495] bg-white px-4 py-3 text-sm font-bold text-black">
       <AlertTriangle size={17} aria-hidden="true" className="text-[#ff3495]" />
       {text}
     </div>
@@ -843,7 +831,7 @@ function ChangeRequestQueue({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 max-h-[460px] pr-2 overflow-y-auto">
       {requests.map((request) => {
         const comment = comments[request.id] ?? ''
 
@@ -886,7 +874,7 @@ function ChangeRequestQueue({
                 type="button"
                 disabled={actionPending}
                 onClick={() => onApprove(request.id, comment.trim())}
-                className="inline-flex h-9 items-center justify-center rounded-md bg-[#a7fc00] px-4 text-xs font-black uppercase text-black transition hover:bg-[#95e700] disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35"
+                className="inline-flex h-9 items-center justify-center rounded-md bg-black px-4 text-xs font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35 focus:outline-none focus:ring-4 focus:ring-black/20"
               >
                 Одобрить
               </button>
@@ -894,7 +882,7 @@ function ChangeRequestQueue({
                 type="button"
                 disabled={actionPending}
                 onClick={() => onReject(request.id, comment.trim())}
-                className="inline-flex h-9 items-center justify-center rounded-md border border-[#ff3495]/35 bg-[#ff3495]/10 px-4 text-xs font-black uppercase text-[#ff3495] transition hover:border-[#ff3495] disabled:cursor-not-allowed disabled:text-black/35"
+                className="inline-flex h-9 items-center justify-center rounded-md border border-[#ff3495] bg-white px-4 text-xs font-black uppercase text-[#ff3495] transition hover:bg-[#ff3495] hover:text-white disabled:cursor-not-allowed disabled:text-black/35"
               >
                 Отклонить
               </button>

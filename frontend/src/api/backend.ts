@@ -24,7 +24,8 @@ import type {
   ScheduleStatePayload,
   ScheduleChangeRequestPayload,
   PendingScheduleChangeRequest,
-  ScheduleChangeRequestManagerApproval
+  ScheduleChangeRequestManagerApproval,
+  SuggestedTemplate,
 } from './types'
 
 export const authApi = {
@@ -220,6 +221,16 @@ export const templateApi = {
 
   async delete(templateId: number): Promise<void> {
     await apiClient.delete(`/templates/${templateId}`)
+  },
+
+  async getSuggested(): Promise<SuggestedTemplate> {
+    const response = await apiClient.get<SuggestedTemplate>('/templates/suggested/current')
+    return response.data
+  },
+
+  async applySuggested(): Promise<SuggestedTemplate> {
+    const response = await apiClient.post<SuggestedTemplate>('/templates/suggested/current/apply')
+    return response.data
   },
 }
 

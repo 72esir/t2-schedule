@@ -240,3 +240,10 @@ export interface ScheduleChangeRequestManagerApproval {
   manager_comment?: string
 }
 
+export interface SuggestedTemplate {
+  has_suggestion: boolean
+  period_id: number | null
+  match_count: number
+  source_period_ids: number[]
+  days: BackendScheduleByDate
+}
