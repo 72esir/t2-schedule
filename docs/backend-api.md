@@ -41,6 +41,66 @@ Frontend should use only:
 ["shift", "split", "dayoff", "vacation"]
 ```
 
+### Schedule payload contracts
+
+`status=shift`
+
+```json
+{
+  "status": "shift",
+  "meta": {
+    "shiftStart": "09:00",
+    "shiftEnd": "18:00"
+  }
+}
+```
+
+Rules:
+
+- both fields are required
+- time format must be `HH:MM`
+- `shiftStart < shiftEnd`
+
+`status=split`
+
+```json
+{
+  "status": "split",
+  "meta": {
+    "splitStart1": "09:00",
+    "splitEnd1": "13:00",
+    "splitStart2": "14:00",
+    "splitEnd2": "18:00"
+  }
+}
+```
+
+Rules:
+
+- all four fields are required
+- all values must be `HH:MM`
+- `splitStart1 < splitEnd1`
+- `splitStart2 < splitEnd2`
+- first interval must end before or exactly when second interval starts
+
+`status=dayoff`
+
+```json
+{
+  "status": "dayoff",
+  "meta": null
+}
+```
+
+`status=vacation`
+
+```json
+{
+  "status": "vacation",
+  "meta": null
+}
+```
+
 ## Authentication endpoints
 
 ### POST `/auth/register`

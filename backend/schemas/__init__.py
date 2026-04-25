@@ -1,7 +1,7 @@
 from datetime import date, datetime
-from typing import Dict, Optional
+from typing import Annotated, Dict, Literal, Optional, Union
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from backend.models import UserRole, VacationDaysStatus
 
@@ -65,9 +65,94 @@ class VerificationRequest(BaseModel):
     token: str
 
 
-class ScheduleDayPayload(BaseModel):
-    status: str
-    meta: Optional[dict] = None
+def _parse_time_value(value: str) -> tuple[int, int]:
+    try:
+        hours_str, minutes_str = value.split(":")
+        hours = int(hours_str)
+        minutes = int(minutes_str)
+    except ValueError as exc:
+        raise ValueError("Time must be in HH:MM format") from exc
+
+    if not (0 <= hours <= 23 and 0 <= minutes <= 59):
+        raise ValueError("Time must be in HH:MM format")
+
+    return hours, minutes
+
+
+def _time_to_minutes(value: str) -> int:
+    hours, minutes = _parse_time_value(value)
+    return hours * 60 + minutes
+
+
+class ShiftMeta(BaseModel):
+    shiftStart: str
+    shiftEnd: str
+
+    @field_validator("shiftStart", "shiftEnd")
+    @classmethod
+    def validate_time_format(cls, value: str) -> str:
+        _parse_time_value(value)
+        return value
+
+    @model_validator(mode="after")
+    def validate_shift_order(self):
+        if _time_to_minutes(self.shiftStart) >= _time_to_minutes(self.shiftEnd):
+            raise ValueError("shiftStart must be earlier than shiftEnd")
+        return self
+
+
+class SplitShiftMeta(BaseModel):
+    splitStart1: str
+    splitEnd1: str
+    splitStart2: str
+    splitEnd2: str
+
+    @field_validator("splitStart1", "splitEnd1", "splitStart2", "splitEnd2")
+    @classmethod
+    def validate_time_format(cls, value: str) -> str:
+        _parse_time_value(value)
+        return value
+
+    @model_validator(mode="after")
+    def validate_split_order(self):
+        start1 = _time_to_minutes(self.splitStart1)
+        end1 = _time_to_minutes(self.splitEnd1)
+        start2 = _time_to_minutes(self.splitStart2)
+        end2 = _time_to_minutes(self.splitEnd2)
+
+        if start1 >= end1:
+            raise ValueError("splitStart1 must be earlier than splitEnd1")
+        if start2 >= end2:
+            raise ValueError("splitStart2 must be earlier than splitEnd2")
+        if end1 > start2:
+            raise ValueError("Second interval must start after first interval ends")
+        return self
+
+
+class ShiftDayPayload(BaseModel):
+    status: Literal["shift"]
+    meta: ShiftMeta
+
+
+class SplitDayPayload(BaseModel):
+    status: Literal["split"]
+    meta: SplitShiftMeta
+
+
+class DayOffDayPayload(BaseModel):
+    status: Literal["dayoff"]
+    meta: None = None
+
+
+class VacationDayPayload(BaseModel):
+    status: Literal["vacation"]
+    meta: None = None
+
+
+ScheduleDayPayload = Annotated[
+    Union[ShiftDayPayload, SplitDayPayload, DayOffDayPayload, VacationDayPayload],
+    Field(discriminator="status"),
+]
 
 
 class ScheduleBulkUpdate(BaseModel):
