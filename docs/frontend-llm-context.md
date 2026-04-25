@@ -53,6 +53,7 @@ Important:
 - Save/update schedule
 - Read-only empty state if no active period exists
 - Read-only state after deadline
+- Hours summary by day/week/period
 
 ## Required manager screens
 
@@ -64,6 +65,7 @@ Important:
 - Pending employee verification queue
 - Submission status list
 - Employee details and schedule review
+- Employee hour summary
 - Pending vacation moderation queue
 - Vacation moderation controls
 

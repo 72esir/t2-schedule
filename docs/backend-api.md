@@ -289,6 +289,37 @@ Notes:
 - Manager can only access users from same alliance.
 - Current period is resolved by that employee's alliance.
 
+### GET `/schedules/me/summary`
+
+Returns calculated hour summary for current user's active alliance period.
+
+Auth required: yes
+Role: verified user
+
+Response:
+
+```json
+{
+  "daily_hours": {
+    "2026-05-01": 8.0,
+    "2026-05-02": 0.0
+  },
+  "weekly_hours": {
+    "2026-04-27": 40.0
+  },
+  "period_total_hours": 80.0,
+  "vacation_days_count": 2,
+  "max_work_streak": 5
+}
+```
+
+### GET `/schedules/by-user/{user_id}/summary`
+
+Returns calculated hour summary for one employee in manager review mode.
+
+Auth required: yes
+Roles: `manager`
+
 ## Manager endpoints
 
 ### GET `/manager/users`

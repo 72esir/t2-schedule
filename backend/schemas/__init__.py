@@ -165,6 +165,14 @@ class ScheduleForUser(BaseModel):
     vacation_work: Optional[dict] = None
 
 
+class ScheduleSummary(BaseModel):
+    daily_hours: Dict[date, float]
+    weekly_hours: Dict[date, float]
+    period_total_hours: float
+    vacation_days_count: int
+    max_work_streak: int
+
+
 class CollectionPeriodOut(BaseModel):
     id: int
     alliance: str
