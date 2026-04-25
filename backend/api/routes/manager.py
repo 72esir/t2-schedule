@@ -17,6 +17,24 @@ def require_manager(current_user: User = Depends(get_current_active_user)):
     return current_user
 
 
+@router.get("/vacation-days/pending", response_model=List[UserOut])
+def get_pending_vacation_days(
+    current_user: User = Depends(require_manager),
+    db: Session = Depends(get_db),
+):
+    return (
+        db.query(User)
+        .filter(
+            User.alliance == current_user.alliance,
+            User.role == UserRole.USER,
+            User.vacation_days_status == VacationDaysStatus.PENDING,
+            User.vacation_days_declared.is_not(None),
+        )
+        .order_by(User.created_at.desc())
+        .all()
+    )
+
+
 @router.get("/users", response_model=List[UserOut])
 def get_users(
     verified: Optional[bool] = None,
