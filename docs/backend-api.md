@@ -181,6 +181,31 @@ Rules:
 - only periods whose deadline has already passed are evaluated
 - period counts as success if employee saved schedule before deadline
 - any post-deadline schedule change request breaks streak for that period
+- response also contains:
+  - `bonus_balance`
+  - `redeemable_sets`
+
+### POST `/auth/me/streak/redeem`
+
+Converts employee streak into internal bonus balance.
+
+Current rule:
+
+- every `5` streak points can be converted into `3` bonus points
+- one request redeems exactly one set
+- redeemed streak is subtracted from current streak
+
+Response:
+
+```json
+{
+  "converted_streak": 5,
+  "awarded_bonus": 3,
+  "bonus_balance": 6,
+  "current_streak": 0,
+  "redeemable_sets": 0
+}
+```
 
 ### POST `/auth/verify`
 

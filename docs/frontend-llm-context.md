@@ -61,6 +61,7 @@ Important:
 - Hours summary by day/week/period
 - Validation warnings for weekly hours and work streak
 - Personal streak widget via `GET /auth/me/streak`
+- Streak-to-bonus exchange via `POST /auth/me/streak/redeem`
 - Suggested template prompt via `GET /templates/suggested/current`
 - Apply suggested template via `POST /templates/suggested/current/apply`
 - Google Calendar connection status via `GET /integrations/google/status`
@@ -205,6 +206,26 @@ Important:
   - load deterministic suggested schedule
   - preview it
   - apply it to the current employee schedule
+
+## Streak bonus flow
+
+Employee can exchange streak into internal bonus points.
+
+Current backend rule:
+
+- `5` streak -> `3` bonus points
+- one request redeems one set only
+
+Use:
+
+- `GET /auth/me/streak`
+- `POST /auth/me/streak/redeem`
+
+Suggested UI:
+
+- show `current_streak`
+- show `bonus_balance`
+- if `redeemable_sets > 0`, show button `Exchange streak for bonuses`
 
 ## API reference
 

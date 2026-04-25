@@ -76,6 +76,8 @@ class UserStreakOut(BaseModel):
     longest_streak: int
     completed_periods_count: int
     evaluated_periods_count: int
+    bonus_balance: int = 0
+    redeemable_sets: int = 0
     history: list[UserStreakPeriodResult]
 
 
@@ -86,6 +88,15 @@ class UserStreakLeaderboardItem(BaseModel):
     current_streak: int
     longest_streak: int
     completed_periods_count: int
+    bonus_balance: int = 0
+
+
+class StreakRedeemOut(BaseModel):
+    converted_streak: int
+    awarded_bonus: int
+    bonus_balance: int
+    current_streak: int
+    redeemable_sets: int
 
 
 class VerificationRequest(BaseModel):

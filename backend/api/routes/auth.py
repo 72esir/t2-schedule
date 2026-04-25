@@ -13,8 +13,19 @@ from backend.core import (
 )
 from backend.db import get_db
 from backend.models import User, UserRole, VacationDaysStatus, VerificationToken
-from backend.schemas import EmployeeRegisterRequest, Token, UserMe, UserStreakOut, VerificationRequest
-from backend.services import build_user_streak
+from backend.schemas import (
+    EmployeeRegisterRequest,
+    StreakRedeemOut,
+    Token,
+    UserMe,
+    UserStreakOut,
+    VerificationRequest,
+)
+from backend.services import (
+    STREAK_REDEEM_BONUS,
+    STREAK_REDEEM_THRESHOLD,
+    build_user_streak,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -113,3 +124,31 @@ def get_my_streak(
     db: Session = Depends(get_db),
 ):
     return UserStreakOut(**build_user_streak(db, user=current_user))
+
+
+@router.post("/me/streak/redeem", response_model=StreakRedeemOut)
+def redeem_my_streak(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    streak = build_user_streak(db, user=current_user)
+    current_streak = streak["current_streak"]
+    if current_streak < STREAK_REDEEM_THRESHOLD:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Need at least {STREAK_REDEEM_THRESHOLD} streak to redeem bonuses",
+        )
+
+    current_user.streak_redeemed_count = (current_user.streak_redeemed_count or 0) + STREAK_REDEEM_THRESHOLD
+    current_user.bonus_balance = (current_user.bonus_balance or 0) + STREAK_REDEEM_BONUS
+    db.commit()
+    db.refresh(current_user)
+
+    updated_streak = build_user_streak(db, user=current_user)
+    return StreakRedeemOut(
+        converted_streak=STREAK_REDEEM_THRESHOLD,
+        awarded_bonus=STREAK_REDEEM_BONUS,
+        bonus_balance=current_user.bonus_balance or 0,
+        current_streak=updated_streak["current_streak"],
+        redeemable_sets=updated_streak["redeemable_sets"],
+    )

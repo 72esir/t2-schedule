@@ -85,6 +85,8 @@ class User(Base):
         default=VacationDaysStatus.PENDING,
         nullable=False,
     )
+    bonus_balance = Column(Integer, default=0, nullable=False)
+    streak_redeemed_count = Column(Integer, default=0, nullable=False)
 
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(

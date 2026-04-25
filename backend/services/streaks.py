@@ -7,6 +7,9 @@ from sqlalchemy.orm import Session
 
 from backend.models import CollectionPeriod, ScheduleChangeRequest, ScheduleEntry, User, UserRole
 
+STREAK_REDEEM_THRESHOLD = 5
+STREAK_REDEEM_BONUS = 3
+
 
 @dataclass
 class PeriodStreakResult:
@@ -103,12 +106,14 @@ def build_user_streak(db: Session, *, user: User) -> dict:
         for period in periods
     ]
 
-    current_streak = 0
+    raw_current_streak = 0
     for result in history:
         if result.success:
-            current_streak += 1
+            raw_current_streak += 1
         else:
             break
+
+    current_streak = max(raw_current_streak - (user.streak_redeemed_count or 0), 0)
 
     longest_streak = 0
     running = 0
@@ -124,6 +129,8 @@ def build_user_streak(db: Session, *, user: User) -> dict:
         "longest_streak": longest_streak,
         "completed_periods_count": sum(1 for result in history if result.success),
         "evaluated_periods_count": len(history),
+        "bonus_balance": user.bonus_balance or 0,
+        "redeemable_sets": current_streak // STREAK_REDEEM_THRESHOLD,
         "history": [
             {
                 "period_id": result.period_id,
@@ -160,6 +167,7 @@ def build_alliance_streak_leaderboard(db: Session, *, alliance: str) -> list[dic
                 "current_streak": streak["current_streak"],
                 "longest_streak": streak["longest_streak"],
                 "completed_periods_count": streak["completed_periods_count"],
+                "bonus_balance": streak["bonus_balance"],
             }
         )
 
