@@ -60,6 +60,7 @@ Important:
 - Create period
 - Close period
 - Employee list
+- Pending employee verification queue
 - Submission status list
 - Employee details and schedule review
 - Pending vacation moderation queue
@@ -83,6 +84,15 @@ Recommended API for that screen:
 
 - `GET /manager/vacation-days/pending`
 - `PUT /manager/users/{user_id}/vacation-days`
+
+## Account verification UI
+
+Manager should also have a queue of employees waiting for account verification.
+
+Recommended API for that screen:
+
+- `GET /manager/users/pending-verification`
+- `PUT /manager/users/{user_id}/verify`
 
 ## API reference
 

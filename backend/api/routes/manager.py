@@ -35,6 +35,23 @@ def get_pending_vacation_days(
     )
 
 
+@router.get("/users/pending-verification", response_model=List[UserOut])
+def get_pending_verification_users(
+    current_user: User = Depends(require_manager),
+    db: Session = Depends(get_db),
+):
+    return (
+        db.query(User)
+        .filter(
+            User.alliance == current_user.alliance,
+            User.role == UserRole.USER,
+            User.is_verified.is_(False),
+        )
+        .order_by(User.created_at.desc())
+        .all()
+    )
+
+
 @router.get("/users", response_model=List[UserOut])
 def get_users(
     verified: Optional[bool] = None,

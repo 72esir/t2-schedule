@@ -272,6 +272,34 @@ Response:
 ]
 ```
 
+### GET `/manager/users/pending-verification`
+
+Returns only employees from current manager alliance whose accounts are not yet verified.
+
+Auth required: yes
+Roles: `manager`
+
+Response:
+
+```json
+[
+  {
+    "id": 8,
+    "external_id": "6505000001",
+    "full_name": "Petr Petrov",
+    "alliance": "Alliance 1",
+    "category": "operator",
+    "email": "petr@example.com",
+    "registered": true,
+    "is_verified": false,
+    "role": "user",
+    "vacation_days_declared": 21,
+    "vacation_days_approved": null,
+    "vacation_days_status": "pending"
+  }
+]
+```
+
 ### PUT `/manager/users/{user_id}/verify`
 
 Marks user as verified.
@@ -342,6 +370,7 @@ Response:
   - login only
   - current period management
   - employee list
+  - pending employee verification queue
   - submission stats
   - employee schedule review
   - pending vacation moderation queue
