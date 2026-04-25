@@ -244,6 +244,34 @@ Behavior:
 
 - If manager does not pass `alliance`, backend automatically restricts to manager's alliance.
 
+### GET `/manager/vacation-days/pending`
+
+Returns only employees from current manager alliance whose declared vacation days still require moderation.
+
+Auth required: yes
+Roles: `manager`
+
+Response:
+
+```json
+[
+  {
+    "id": 12,
+    "external_id": "6505365461",
+    "full_name": "Ivan Ivanov",
+    "alliance": "Alliance 1",
+    "category": "operator",
+    "email": "employee@example.com",
+    "registered": true,
+    "is_verified": false,
+    "role": "user",
+    "vacation_days_declared": 14,
+    "vacation_days_approved": null,
+    "vacation_days_status": "pending"
+  }
+]
+```
+
 ### PUT `/manager/users/{user_id}/verify`
 
 Marks user as verified.
@@ -316,4 +344,5 @@ Response:
   - employee list
   - submission stats
   - employee schedule review
+  - pending vacation moderation queue
   - vacation days moderation

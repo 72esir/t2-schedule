@@ -62,6 +62,7 @@ Important:
 - Employee list
 - Submission status list
 - Employee details and schedule review
+- Pending vacation moderation queue
 - Vacation moderation controls
 
 ## Vacation moderation UI
@@ -77,6 +78,11 @@ Manager actions:
 - approve
 - reject
 - adjust with corrected number
+
+Recommended API for that screen:
+
+- `GET /manager/vacation-days/pending`
+- `PUT /manager/users/{user_id}/vacation-days`
 
 ## API reference
 
