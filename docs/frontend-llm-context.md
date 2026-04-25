@@ -52,18 +52,27 @@ Important:
 - Schedule calendar for active period
 - Save/update schedule
 - Read-only empty state if no active period exists
+- Read-only state after deadline
+- Hours summary by day/week/period
+- Validation warnings for weekly hours and work streak
 
 ## Required manager screens
 
 - Login
 - Dashboard with current period stats
+- Dashboard summary via `GET /manager/dashboard`
 - Create period
+- Create period from template: `week`, `two_weeks`, `month`, `custom`
 - Close period
 - Employee list
+- Pending employee verification queue
 - Submission status list
 - Employee details and schedule review
+- Employee hour summary
+- Employee validation warnings
 - Pending vacation moderation queue
 - Vacation moderation controls
+- Excel export with hours and violations
 
 ## Vacation moderation UI
 
@@ -84,7 +93,50 @@ Recommended API for that screen:
 - `GET /manager/vacation-days/pending`
 - `PUT /manager/users/{user_id}/vacation-days`
 
+## Account verification UI
+
+Manager should also have a queue of employees waiting for account verification.
+
+Recommended API for that screen:
+
+- `GET /manager/users/pending-verification`
+- `PUT /manager/users/{user_id}/verify`
+
+## Manager dashboard UI
+
+Recommended main query for the manager home screen:
+
+- `GET /manager/dashboard`
+
+It already returns:
+
+- current active period
+- total employees
+- submitted vs pending counts
+- pending verification count
+- pending vacation moderation count
+- problem employees with validation violations
+
+Frontend can use this single response for dashboard cards and a "problem schedules" block.
+
 ## API reference
 
 Use `docs/backend-api.md` as the source of truth for requests and responses.
+
+## Period template flow
+
+Manager period creation should support two modes:
+
+- manual range via `POST /periods`
+- template-based creation via `POST /periods/from-template`
+
+Recommended frontend flow:
+
+1. Call `GET /periods/templates`
+2. Show template cards or radio buttons
+3. Collect:
+   - `period_start`
+   - `deadline`
+   - `period_end` only when template is `custom`
+4. Send selected template payload to `POST /periods/from-template`
 

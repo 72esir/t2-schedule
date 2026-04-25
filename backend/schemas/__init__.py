@@ -1,7 +1,8 @@
-from datetime import date, datetime
-from typing import Dict, Optional
+from calendar import monthrange
+from datetime import date, datetime, timedelta
+from typing import Annotated, Dict, Literal, Optional, Union
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from backend.models import UserRole, VacationDaysStatus
 
@@ -65,9 +66,114 @@ class VerificationRequest(BaseModel):
     token: str
 
 
-class ScheduleDayPayload(BaseModel):
-    status: str
-    meta: Optional[dict] = None
+class ManagerProblemEmployeeOut(BaseModel):
+    user_id: int
+    full_name: str
+    email: Optional[EmailStr] = None
+    violation_count: int
+    violation_codes: list[str]
+    summary: Optional["ScheduleSummary"] = None
+
+
+class ManagerDashboardOut(BaseModel):
+    current_period: Optional["CollectionPeriodOut"] = None
+    total_employees: int
+    submitted_count: int
+    pending_count: int
+    pending_verification_count: int
+    pending_vacation_moderation_count: int
+    employees_with_violations_count: int
+    problem_employees: list[ManagerProblemEmployeeOut]
+
+
+def _parse_time_value(value: str) -> tuple[int, int]:
+    try:
+        hours_str, minutes_str = value.split(":")
+        hours = int(hours_str)
+        minutes = int(minutes_str)
+    except ValueError as exc:
+        raise ValueError("Time must be in HH:MM format") from exc
+
+    if not (0 <= hours <= 23 and 0 <= minutes <= 59):
+        raise ValueError("Time must be in HH:MM format")
+
+    return hours, minutes
+
+
+def _time_to_minutes(value: str) -> int:
+    hours, minutes = _parse_time_value(value)
+    return hours * 60 + minutes
+
+
+class ShiftMeta(BaseModel):
+    shiftStart: str
+    shiftEnd: str
+
+    @field_validator("shiftStart", "shiftEnd")
+    @classmethod
+    def validate_time_format(cls, value: str) -> str:
+        _parse_time_value(value)
+        return value
+
+    @model_validator(mode="after")
+    def validate_shift_order(self):
+        if _time_to_minutes(self.shiftStart) >= _time_to_minutes(self.shiftEnd):
+            raise ValueError("shiftStart must be earlier than shiftEnd")
+        return self
+
+
+class SplitShiftMeta(BaseModel):
+    splitStart1: str
+    splitEnd1: str
+    splitStart2: str
+    splitEnd2: str
+
+    @field_validator("splitStart1", "splitEnd1", "splitStart2", "splitEnd2")
+    @classmethod
+    def validate_time_format(cls, value: str) -> str:
+        _parse_time_value(value)
+        return value
+
+    @model_validator(mode="after")
+    def validate_split_order(self):
+        start1 = _time_to_minutes(self.splitStart1)
+        end1 = _time_to_minutes(self.splitEnd1)
+        start2 = _time_to_minutes(self.splitStart2)
+        end2 = _time_to_minutes(self.splitEnd2)
+
+        if start1 >= end1:
+            raise ValueError("splitStart1 must be earlier than splitEnd1")
+        if start2 >= end2:
+            raise ValueError("splitStart2 must be earlier than splitEnd2")
+        if end1 > start2:
+            raise ValueError("Second interval must start after first interval ends")
+        return self
+
+
+class ShiftDayPayload(BaseModel):
+    status: Literal["shift"]
+    meta: ShiftMeta
+
+
+class SplitDayPayload(BaseModel):
+    status: Literal["split"]
+    meta: SplitShiftMeta
+
+
+class DayOffDayPayload(BaseModel):
+    status: Literal["dayoff"]
+    meta: None = None
+
+
+class VacationDayPayload(BaseModel):
+    status: Literal["vacation"]
+    meta: None = None
+
+
+ScheduleDayPayload = Annotated[
+    Union[ShiftDayPayload, SplitDayPayload, DayOffDayPayload, VacationDayPayload],
+    Field(discriminator="status"),
+]
 
 
 class ScheduleBulkUpdate(BaseModel):
@@ -78,6 +184,27 @@ class ScheduleForUser(BaseModel):
     user: UserOut
     entries: Dict[date, ScheduleDayPayload]
     vacation_work: Optional[dict] = None
+
+
+class ScheduleSummary(BaseModel):
+    daily_hours: Dict[date, float]
+    weekly_hours: Dict[date, float]
+    period_total_hours: float
+    vacation_days_count: int
+    max_work_streak: int
+
+
+class ScheduleViolation(BaseModel):
+    code: str
+    level: str
+    message: str
+    context: dict
+
+
+class ScheduleValidationResult(BaseModel):
+    is_valid: bool
+    violations: list[ScheduleViolation]
+    summary: ScheduleSummary
 
 
 class CollectionPeriodOut(BaseModel):
@@ -98,6 +225,50 @@ class CollectionPeriodCreate(BaseModel):
     period_start: date
     period_end: date
     deadline: datetime
+
+    @model_validator(mode="after")
+    def validate_period_range(self):
+        if self.period_end < self.period_start:
+            raise ValueError("period_end must be on or after period_start")
+        return self
+
+
+PeriodTemplateType = Literal["week", "two_weeks", "month", "custom"]
+
+
+class PeriodTemplateOut(BaseModel):
+    type: PeriodTemplateType
+    label: str
+    description: str
+    requires_period_end: bool
+
+
+class CollectionPeriodFromTemplateCreate(BaseModel):
+    template_type: PeriodTemplateType
+    period_start: date
+    deadline: datetime
+    period_end: Optional[date] = None
+
+    @model_validator(mode="after")
+    def validate_template_payload(self):
+        if self.template_type == "custom":
+            if self.period_end is None:
+                raise ValueError("period_end is required for custom template")
+            if self.period_end < self.period_start:
+                raise ValueError("period_end must be on or after period_start")
+        elif self.period_end is not None:
+            raise ValueError("period_end is only allowed for custom template")
+        return self
+
+    def resolve_period_end(self) -> date:
+        if self.template_type == "week":
+            return self.period_start + timedelta(days=6)
+        if self.template_type == "two_weeks":
+            return self.period_start + timedelta(days=13)
+        if self.template_type == "month":
+            last_day = monthrange(self.period_start.year, self.period_start.month)[1]
+            return date(self.period_start.year, self.period_start.month, last_day)
+        return self.period_end
 
 
 class ScheduleTemplateCreate(BaseModel):

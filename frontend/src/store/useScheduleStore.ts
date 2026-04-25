@@ -1,7 +1,6 @@
 import { endOfMonth, startOfMonth } from 'date-fns'
 import { create } from 'zustand'
 
-import { createMockSchedule } from '../mocks/schedule'
 import type {
   DateInput,
   ScheduleByDate,
@@ -21,7 +20,8 @@ const initialPeriod = createDefaultPeriod()
 export interface ScheduleStoreState {
   currentPeriod: SchedulePeriod
   shiftsByDate: ScheduleByDate
-  setCurrentPeriod: (startDate: DateInput, endDate: DateInput) => void
+  setCurrentPeriod: (period: SchedulePeriod) => void
+  setSchedule: (schedule: ScheduleByDate) => void
   setShift: (date: DateInput, data: ScheduleShift | null | undefined) => void
   clearSchedule: () => void
   weeklyTotalHours: (weekDate?: DateInput) => number
@@ -31,18 +31,14 @@ export interface ScheduleStoreState {
 
 export const useScheduleStore = create<ScheduleStoreState>((set, get) => ({
   currentPeriod: initialPeriod,
-  shiftsByDate: createMockSchedule(initialPeriod),
+  shiftsByDate: {},
 
-  setCurrentPeriod: (startDate, endDate) => {
-    const nextPeriod = {
-      startDate: toDateKey(startDate),
-      endDate: toDateKey(endDate),
-    }
+  setCurrentPeriod: (period) => {
+    set({ currentPeriod: period })
+  },
 
-    set({
-      currentPeriod: nextPeriod,
-      shiftsByDate: createMockSchedule(nextPeriod),
-    })
+  setSchedule: (schedule) => {
+    set({ shiftsByDate: schedule })
   },
 
   setShift: (date, data) => {
@@ -104,9 +100,15 @@ export const useScheduleStore = create<ScheduleStoreState>((set, get) => ({
 
 function createDefaultPeriod(): SchedulePeriod {
   const today = new Date()
+  const startDate = startOfMonth(today)
+  const endDate = endOfMonth(today)
 
   return {
-    startDate: toDateKey(startOfMonth(today)),
-    endDate: toDateKey(endOfMonth(today)),
+    startDate: toDateKey(startDate),
+    endDate: toDateKey(endDate),
+    deadline: endDate.toISOString(),
+    allianceName: '',
+    status: 'closed',
+    editingReopened: false,
   }
 }

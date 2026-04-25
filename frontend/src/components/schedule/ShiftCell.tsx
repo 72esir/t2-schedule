@@ -24,6 +24,7 @@ interface ShiftCellProps {
   date: DateInput
   className?: string
   isMuted?: boolean
+  readOnly?: boolean
 }
 
 interface ShiftVisualConfig {
@@ -77,6 +78,7 @@ export default function ShiftCell({
   date,
   className = '',
   isMuted = false,
+  readOnly = false,
 }: ShiftCellProps) {
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const dateKey = toDateKey(date)
@@ -86,16 +88,23 @@ export default function ShiftCell({
   const visualConfig = getVisualConfig(shift)
   const Icon = visualConfig.Icon
   const isCurrentDay = isToday(normalizedDate)
+  const isDisabled = readOnly || isMuted
 
   return (
     <div className={className}>
       <button
         type="button"
-        onClick={() => setIsEditorOpen(true)}
+        onClick={() => {
+          if (!isDisabled) {
+            setIsEditorOpen(true)
+          }
+        }}
+        aria-disabled={isDisabled}
         className={classNames(
           'group grid min-h-32 w-full grid-rows-[auto_1fr_auto] rounded-lg border p-3 text-left shadow-sm transition duration-200 focus:outline-none focus:ring-4 focus:ring-[#ff3495]/20',
           visualConfig.cellClassName,
           isMuted ? 'opacity-45' : '',
+          isDisabled ? 'cursor-not-allowed' : '',
         )}
         aria-label={`Редактировать смену за ${dateKey}`}
       >
