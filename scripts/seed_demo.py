@@ -126,9 +126,21 @@ def main() -> int:
             dt_time(hour=18),
             tzinfo=timezone.utc,
         )
-        expired_start = active_start - timedelta(days=14)
-        expired_deadline = datetime.combine(
+        closed_template_start_1 = active_start - timedelta(days=21)
+        closed_template_deadline_1 = datetime.combine(
+            today - timedelta(days=8),
+            dt_time(hour=18),
+            tzinfo=timezone.utc,
+        )
+        closed_template_start_2 = active_start - timedelta(days=14)
+        closed_template_deadline_2 = datetime.combine(
             today - timedelta(days=2),
+            dt_time(hour=18),
+            tzinfo=timezone.utc,
+        )
+        expired_start = active_start - timedelta(days=7)
+        expired_deadline = datetime.combine(
+            today - timedelta(days=1),
             dt_time(hour=18),
             tzinfo=timezone.utc,
         )
@@ -219,6 +231,20 @@ def main() -> int:
             deadline=active_deadline,
             is_open=True,
         )
+        closed_template_period_1 = CollectionPeriod(
+            alliance=DEMO_ALLIANCE,
+            period_start=closed_template_start_1,
+            period_end=closed_template_start_1 + timedelta(days=6),
+            deadline=closed_template_deadline_1,
+            is_open=False,
+        )
+        closed_template_period_2 = CollectionPeriod(
+            alliance=DEMO_ALLIANCE,
+            period_start=closed_template_start_2,
+            period_end=closed_template_start_2 + timedelta(days=6),
+            deadline=closed_template_deadline_2,
+            is_open=False,
+        )
         expired_period = CollectionPeriod(
             alliance=DEMO_ALLIANCE,
             period_start=expired_start,
@@ -226,9 +252,11 @@ def main() -> int:
             deadline=expired_deadline,
             is_open=False,
         )
-        session.add_all([active_period, expired_period])
+        session.add_all([active_period, closed_template_period_1, closed_template_period_2, expired_period])
         session.commit()
         session.refresh(active_period)
+        session.refresh(closed_template_period_1)
+        session.refresh(closed_template_period_2)
         session.refresh(expired_period)
 
         log("creating employee templates")
@@ -255,21 +283,38 @@ def main() -> int:
             ]
         )
 
+        log("creating repeated closed period schedules for suggestion")
+        repeated_days = [
+            schedule_shift("09:00", "17:00"),
+            schedule_shift("09:00", "17:00"),
+            schedule_shift("09:00", "17:00"),
+            schedule_shift("09:00", "17:00"),
+            schedule_shift("09:00", "17:00"),
+            {"status": "dayoff", "meta": None},
+            {"status": "dayoff", "meta": None},
+        ]
+        add_schedule_entries(
+            session,
+            user_id=employee_1.id,
+            period_id=closed_template_period_1.id,
+            start_day=closed_template_period_1.period_start,
+            days=repeated_days,
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_1.id,
+            period_id=closed_template_period_2.id,
+            start_day=closed_template_period_2.period_start,
+            days=repeated_days,
+        )
+
         log("creating active period schedules")
         add_schedule_entries(
             session,
             user_id=employee_1.id,
             period_id=active_period.id,
             start_day=active_period.period_start,
-            days=[
-                schedule_shift("09:00", "17:00"),
-                schedule_shift("09:00", "17:00"),
-                schedule_shift("09:00", "17:00"),
-                schedule_shift("09:00", "17:00"),
-                schedule_shift("09:00", "17:00"),
-                {"status": "dayoff", "meta": None},
-                {"status": "dayoff", "meta": None},
-            ],
+            days=repeated_days,
         )
         add_schedule_entries(
             session,
@@ -331,6 +376,7 @@ def main() -> int:
         print(f"Alliance: {DEMO_ALLIANCE}")
         print(f"Active period start: {active_period.period_start}")
         print(f"Active period deadline: {active_period.deadline.isoformat()}")
+        print("Suggested template should be available for employee1@company.ru")
         return 0
     finally:
         session.close()

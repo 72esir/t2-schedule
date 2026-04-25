@@ -671,6 +671,20 @@ Behavior:
 
 Returns streak leaderboard for verified employees in current manager alliance.
 
+### GET `/templates/suggested/current`
+
+Returns a suggested schedule template for current active period if the employee filled at least 2 closed periods with the exact same pattern.
+
+Notes:
+
+- only exact matches are considered
+- only closed periods with the same duration as current active period are compared
+- if no suggestion is found, `has_suggestion=false`
+
+### POST `/templates/suggested/current/apply`
+
+Applies the current suggested template to the active period.
+
 ### GET `/manager/vacation-days/pending`
 
 Returns only employees from current manager alliance whose declared vacation days still require moderation.

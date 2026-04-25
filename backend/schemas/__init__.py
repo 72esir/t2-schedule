@@ -360,3 +360,11 @@ class ScheduleTemplateOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class SuggestedTemplateOut(BaseModel):
+    has_suggestion: bool
+    period_id: Optional[int] = None
+    match_count: int = 0
+    source_period_ids: list[int] = Field(default_factory=list)
+    days: Dict[date, ScheduleDayPayload] = Field(default_factory=dict)
