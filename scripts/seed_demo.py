@@ -26,6 +26,7 @@ DEMO_ALLIANCE = "Demo Alliance"
 MANAGER_EMAIL = "manager@company.ru"
 EMPLOYEE_PASSWORD = "Employee123!"
 MANAGER_PASSWORD = "Manager123!"
+DEMO_EMPLOYEE_EMAILS = [f"employee{i}@company.ru" for i in range(1, 10)]
 
 
 def log(message: str) -> None:
@@ -49,15 +50,28 @@ def schedule_shift(start: str, end: str) -> dict:
     }
 
 
+def schedule_split(start1: str, end1: str, start2: str, end2: str) -> dict:
+    return {
+        "status": "split",
+        "meta": {
+            "splitStart1": start1,
+            "splitEnd1": end1,
+            "splitStart2": start2,
+            "splitEnd2": end2,
+        },
+    }
+
+
+def dayoff() -> dict:
+    return {"status": "dayoff", "meta": None}
+
+
+def vacation() -> dict:
+    return {"status": "vacation", "meta": None}
+
+
 def cleanup_demo_data(session) -> None:
-    demo_emails = [
-        MANAGER_EMAIL,
-        "employee1@company.ru",
-        "employee2@company.ru",
-        "employee3@company.ru",
-        "employee4@company.ru",
-        "employee5@company.ru",
-    ]
+    demo_emails = [MANAGER_EMAIL, *DEMO_EMPLOYEE_EMAILS]
 
     users = session.query(User).filter(User.email.in_(demo_emails)).all()
     user_ids = [user.id for user in users]
@@ -113,6 +127,13 @@ def add_schedule_entries(session, *, user_id: int, period_id: int, start_day: da
         )
 
 
+def repeat_pattern(pattern: list[dict], cycles: int) -> list[dict]:
+    result: list[dict] = []
+    for _ in range(cycles):
+        result.extend(pattern)
+    return result
+
+
 def main() -> int:
     session = SessionLocal()
     try:
@@ -135,6 +156,12 @@ def main() -> int:
         closed_template_start_2 = active_start - timedelta(days=14)
         closed_template_deadline_2 = datetime.combine(
             today - timedelta(days=2),
+            dt_time(hour=18),
+            tzinfo=timezone.utc,
+        )
+        closed_template_start_3 = active_start - timedelta(days=28)
+        closed_template_deadline_3 = datetime.combine(
+            today - timedelta(days=15),
             dt_time(hour=18),
             tzinfo=timezone.utc,
         )
@@ -219,8 +246,72 @@ def main() -> int:
             vacation_days_declared=7,
             vacation_days_status=VacationDaysStatus.PENDING,
         )
+        employee_6 = User(
+            email="employee6@company.ru",
+            password_hash=get_password_hash(EMPLOYEE_PASSWORD),
+            registered=True,
+            is_verified=True,
+            full_name="Sergey Volkov",
+            alliance=DEMO_ALLIANCE,
+            category="operator",
+            role=UserRole.USER,
+            vacation_days_declared=12,
+            vacation_days_approved=12,
+            vacation_days_status=VacationDaysStatus.APPROVED,
+        )
+        employee_7 = User(
+            email="employee7@company.ru",
+            password_hash=get_password_hash(EMPLOYEE_PASSWORD),
+            registered=True,
+            is_verified=True,
+            full_name="Elena Kozlova",
+            alliance=DEMO_ALLIANCE,
+            category="operator",
+            role=UserRole.USER,
+            vacation_days_declared=5,
+            vacation_days_approved=5,
+            vacation_days_status=VacationDaysStatus.APPROVED,
+        )
+        employee_8 = User(
+            email="employee8@company.ru",
+            password_hash=get_password_hash(EMPLOYEE_PASSWORD),
+            registered=True,
+            is_verified=True,
+            full_name="Dmitry Orlov",
+            alliance=DEMO_ALLIANCE,
+            category="operator",
+            role=UserRole.USER,
+            vacation_days_declared=9,
+            vacation_days_status=VacationDaysStatus.PENDING,
+        )
+        employee_9 = User(
+            email="employee9@company.ru",
+            password_hash=get_password_hash(EMPLOYEE_PASSWORD),
+            registered=True,
+            is_verified=True,
+            full_name="Natalia Fedorova",
+            alliance=DEMO_ALLIANCE,
+            category="operator",
+            role=UserRole.USER,
+            vacation_days_declared=4,
+            vacation_days_approved=4,
+            vacation_days_status=VacationDaysStatus.APPROVED,
+        )
 
-        session.add_all([manager, employee_1, employee_2, employee_3, employee_4, employee_5])
+        session.add_all(
+            [
+                manager,
+                employee_1,
+                employee_2,
+                employee_3,
+                employee_4,
+                employee_5,
+                employee_6,
+                employee_7,
+                employee_8,
+                employee_9,
+            ]
+        )
         session.commit()
 
         log("creating periods")
@@ -245,6 +336,13 @@ def main() -> int:
             deadline=closed_template_deadline_2,
             is_open=False,
         )
+        closed_template_period_3 = CollectionPeriod(
+            alliance=DEMO_ALLIANCE,
+            period_start=closed_template_start_3,
+            period_end=closed_template_start_3 + timedelta(days=6),
+            deadline=closed_template_deadline_3,
+            is_open=False,
+        )
         expired_period = CollectionPeriod(
             alliance=DEMO_ALLIANCE,
             period_start=expired_start,
@@ -252,11 +350,20 @@ def main() -> int:
             deadline=expired_deadline,
             is_open=False,
         )
-        session.add_all([active_period, closed_template_period_1, closed_template_period_2, expired_period])
+        session.add_all(
+            [
+                active_period,
+                closed_template_period_1,
+                closed_template_period_2,
+                closed_template_period_3,
+                expired_period,
+            ]
+        )
         session.commit()
         session.refresh(active_period)
         session.refresh(closed_template_period_1)
         session.refresh(closed_template_period_2)
+        session.refresh(closed_template_period_3)
         session.refresh(expired_period)
 
         log("creating employee templates")
@@ -280,32 +387,120 @@ def main() -> int:
                     shift_end="17:00",
                     has_break=False,
                 ),
+                ScheduleTemplate(
+                    user_id=employee_6.id,
+                    name="Late Start 5/2",
+                    work_days=5,
+                    rest_days=2,
+                    shift_start="12:00",
+                    shift_end="20:00",
+                    has_break=False,
+                ),
+                ScheduleTemplate(
+                    user_id=employee_7.id,
+                    name="Split 2/2",
+                    work_days=2,
+                    rest_days=2,
+                    shift_start="08:00",
+                    shift_end="20:00",
+                    has_break=False,
+                ),
             ]
         )
 
         log("creating repeated closed period schedules for suggestion")
-        repeated_days = [
+        repeated_days_employee_1 = [
             schedule_shift("09:00", "17:00"),
             schedule_shift("09:00", "17:00"),
             schedule_shift("09:00", "17:00"),
             schedule_shift("09:00", "17:00"),
             schedule_shift("09:00", "17:00"),
-            {"status": "dayoff", "meta": None},
-            {"status": "dayoff", "meta": None},
+            dayoff(),
+            dayoff(),
         ]
+        repeated_days_employee_2 = [
+            schedule_split("08:00", "12:00", "14:00", "18:00"),
+            schedule_split("08:00", "12:00", "14:00", "18:00"),
+            schedule_split("08:00", "12:00", "14:00", "18:00"),
+            schedule_split("08:00", "12:00", "14:00", "18:00"),
+            schedule_split("08:00", "12:00", "14:00", "18:00"),
+            dayoff(),
+            dayoff(),
+        ]
+        repeated_days_employee_6 = [
+            schedule_shift("12:00", "20:00"),
+            schedule_shift("12:00", "20:00"),
+            schedule_shift("12:00", "20:00"),
+            schedule_shift("12:00", "20:00"),
+            schedule_shift("12:00", "20:00"),
+            dayoff(),
+            dayoff(),
+        ]
+        repeated_days_employee_7 = [
+            schedule_split("09:00", "13:00", "15:00", "19:00"),
+            schedule_split("09:00", "13:00", "15:00", "19:00"),
+            dayoff(),
+            dayoff(),
+            schedule_split("09:00", "13:00", "15:00", "19:00"),
+            schedule_split("09:00", "13:00", "15:00", "19:00"),
+            dayoff(),
+        ]
+
         add_schedule_entries(
             session,
             user_id=employee_1.id,
             period_id=closed_template_period_1.id,
             start_day=closed_template_period_1.period_start,
-            days=repeated_days,
+            days=repeated_days_employee_1,
         )
         add_schedule_entries(
             session,
             user_id=employee_1.id,
             period_id=closed_template_period_2.id,
             start_day=closed_template_period_2.period_start,
-            days=repeated_days,
+            days=repeated_days_employee_1,
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_2.id,
+            period_id=closed_template_period_1.id,
+            start_day=closed_template_period_1.period_start,
+            days=repeated_days_employee_2,
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_2.id,
+            period_id=closed_template_period_2.id,
+            start_day=closed_template_period_2.period_start,
+            days=repeated_days_employee_2,
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_6.id,
+            period_id=closed_template_period_2.id,
+            start_day=closed_template_period_2.period_start,
+            days=repeated_days_employee_6,
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_6.id,
+            period_id=closed_template_period_3.id,
+            start_day=closed_template_period_3.period_start,
+            days=repeated_days_employee_6,
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_7.id,
+            period_id=closed_template_period_1.id,
+            start_day=closed_template_period_1.period_start,
+            days=repeated_days_employee_7,
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_7.id,
+            period_id=closed_template_period_3.id,
+            start_day=closed_template_period_3.period_start,
+            days=repeated_days_employee_7,
         )
 
         log("creating active period schedules")
@@ -314,7 +509,15 @@ def main() -> int:
             user_id=employee_1.id,
             period_id=active_period.id,
             start_day=active_period.period_start,
-            days=repeated_days,
+            days=[
+                dayoff(),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+            ],
         )
         add_schedule_entries(
             session,
@@ -322,13 +525,13 @@ def main() -> int:
             period_id=active_period.id,
             start_day=active_period.period_start,
             days=[
-                schedule_shift("09:00", "17:00"),
-                schedule_shift("09:00", "17:00"),
-                schedule_shift("09:00", "17:00"),
-                schedule_shift("09:00", "17:00"),
-                schedule_shift("09:00", "17:00"),
-                schedule_shift("09:00", "17:00"),
-                schedule_shift("09:00", "17:00"),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+                dayoff(),
             ],
         )
         add_schedule_entries(
@@ -337,13 +540,88 @@ def main() -> int:
             period_id=active_period.id,
             start_day=active_period.period_start,
             days=[
-                {"status": "vacation", "meta": None},
-                {"status": "vacation", "meta": None},
+                vacation(),
+                vacation(),
                 schedule_shift("10:00", "18:00"),
                 schedule_shift("10:00", "18:00"),
                 schedule_shift("10:00", "18:00"),
-                {"status": "dayoff", "meta": None},
-                {"status": "dayoff", "meta": None},
+                dayoff(),
+                dayoff(),
+            ],
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_5.id,
+            period_id=active_period.id,
+            start_day=active_period.period_start,
+            days=[
+                schedule_shift("08:00", "16:00"),
+                schedule_shift("08:00", "16:00"),
+                schedule_shift("08:00", "16:00"),
+                schedule_shift("08:00", "16:00"),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+            ],
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_6.id,
+            period_id=active_period.id,
+            start_day=active_period.period_start,
+            days=[
+                dayoff(),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+            ],
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_7.id,
+            period_id=active_period.id,
+            start_day=active_period.period_start,
+            days=[
+                dayoff(),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+                dayoff(),
+            ],
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_8.id,
+            period_id=active_period.id,
+            start_day=active_period.period_start,
+            days=[
+                schedule_shift("11:00", "19:00"),
+                schedule_shift("11:00", "19:00"),
+                dayoff(),
+                schedule_shift("11:00", "19:00"),
+                schedule_shift("11:00", "19:00"),
+                dayoff(),
+                dayoff(),
+            ],
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_9.id,
+            period_id=active_period.id,
+            start_day=active_period.period_start,
+            days=[
+                schedule_split("10:00", "14:00", "16:00", "20:00"),
+                schedule_split("10:00", "14:00", "16:00", "20:00"),
+                schedule_split("10:00", "14:00", "16:00", "20:00"),
+                dayoff(),
+                dayoff(),
+                schedule_shift("12:00", "20:00"),
+                dayoff(),
             ],
         )
 
@@ -372,11 +650,17 @@ def main() -> int:
         print(f"Employee: employee1@company.ru / {EMPLOYEE_PASSWORD}")
         print(f"Employee: employee2@company.ru / {EMPLOYEE_PASSWORD}")
         print(f"Employee: employee4@company.ru / {EMPLOYEE_PASSWORD}")
+        print(f"Employee: employee6@company.ru / {EMPLOYEE_PASSWORD}")
+        print(f"Employee: employee7@company.ru / {EMPLOYEE_PASSWORD}")
         print()
         print(f"Alliance: {DEMO_ALLIANCE}")
         print(f"Active period start: {active_period.period_start}")
         print(f"Active period deadline: {active_period.deadline.isoformat()}")
-        print("Suggested template should be available for employee1@company.ru")
+        print("Suggested template should be available for:")
+        print("- employee1@company.ru")
+        print("- employee2@company.ru")
+        print("- employee6@company.ru")
+        print("- employee7@company.ru")
         return 0
     finally:
         session.close()
