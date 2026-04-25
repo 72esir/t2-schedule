@@ -37,6 +37,7 @@ import type {
   PendingScheduleChangeRequest,
 } from '../api/types'
 import t2Logo from '../assets/t2-logo.svg'
+import { useToast } from '../components/Toast'
 
 interface ManagerDashboardProps {
   user: User
@@ -93,7 +94,7 @@ export default function ManagerDashboard({
   const [periodStart, setPeriodStart] = useState(toDateInput(new Date()))
   const [periodEnd, setPeriodEnd] = useState(toDateInput(addDays(new Date(), 13)))
   const [deadline, setDeadline] = useState(toDateTimeInput(new Date()))
-  const [notice, setNotice] = useState('')
+  const toast = useToast()
   const dashboard = dashboardQuery.data
   const currentPeriod = dashboard?.current_period ?? null
   const templates = templatesQuery.data?.length
@@ -102,7 +103,6 @@ export default function ManagerDashboard({
 
   function handleCreatePeriod(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setNotice('')
 
     createPeriodMutation.mutate(
       {
@@ -112,8 +112,8 @@ export default function ManagerDashboard({
         deadline: new Date(deadline).toISOString(),
       },
       {
-        onSuccess: () => setNotice('Период создан. Предыдущий активный период закрыт.'),
-        onError: (error) => setNotice(getApiErrorMessage(error)),
+        onSuccess: () => toast('Период создан. Предыдущий активный период закрыт.'),
+        onError: (error) => toast(getApiErrorMessage(error), 'error'),
       },
     )
   }
@@ -123,18 +123,16 @@ export default function ManagerDashboard({
       return
     }
 
-    setNotice('')
     closePeriodMutation.mutate(currentPeriod.id, {
-      onSuccess: () => setNotice('Период закрыт.'),
-      onError: (error) => setNotice(getApiErrorMessage(error)),
+      onSuccess: () => toast('Период закрыт.'),
+      onError: (error) => toast(getApiErrorMessage(error), 'error'),
     })
   }
 
   function handleVerifyUser(userId: number) {
-    setNotice('')
     verifyUserMutation.mutate(userId, {
-      onSuccess: () => setNotice('Сотрудник подтверждён.'),
-      onError: (error) => setNotice(getApiErrorMessage(error)),
+      onSuccess: () => toast('Сотрудник подтверждён.'),
+      onError: (error) => toast(getApiErrorMessage(error), 'error'),
     })
   }
 
@@ -142,10 +140,9 @@ export default function ManagerDashboard({
     if (!window.confirm('Вы уверены, что хотите отклонить и удалить данного сотрудника?')) {
       return
     }
-    setNotice('')
     rejectUserMutation.mutate(userId, {
-      onSuccess: () => setNotice('Заявка на регистрацию отклонена.'),
-      onError: (error) => setNotice(getApiErrorMessage(error)),
+      onSuccess: () => toast('Заявка на регистрацию отклонена.', 'error'),
+      onError: (error) => toast(getApiErrorMessage(error), 'error'),
     })
   }
 
@@ -154,7 +151,6 @@ export default function ManagerDashboard({
     approvedDays: number,
     status: VacationDaysStatus,
   ) {
-    setNotice('')
     moderateVacationMutation.mutate(
       {
         userId,
@@ -164,48 +160,44 @@ export default function ManagerDashboard({
         },
       },
       {
-        onSuccess: () => setNotice('Дни отпуска обновлены.'),
-        onError: (error) => setNotice(getApiErrorMessage(error)),
+        onSuccess: () => toast('Дни отпуска обновлены.'),
+        onError: (error) => toast(getApiErrorMessage(error), 'error'),
       },
     )
   }
 
   function handleApproveChangeRequest(requestId: number, managerComment: string) {
-    setNotice('')
     approveChangeRequestMutation.mutate(
       { requestId, payload: { manager_comment: managerComment } },
       {
-        onSuccess: () => setNotice('Заявка на изменение одобрена.'),
-        onError: (error) => setNotice(getApiErrorMessage(error)),
+        onSuccess: () => toast('Заявка на изменение одобрена.'),
+        onError: (error) => toast(getApiErrorMessage(error), 'error'),
       },
     )
   }
 
   function handleRejectChangeRequest(requestId: number, managerComment: string) {
-    setNotice('')
     rejectChangeRequestMutation.mutate(
       { requestId, payload: { manager_comment: managerComment } },
       {
-        onSuccess: () => setNotice('Заявка на изменение отклонена.'),
-        onError: (error) => setNotice(getApiErrorMessage(error)),
+        onSuccess: () => toast('Заявка на изменение отклонена.', 'error'),
+        onError: (error) => toast(getApiErrorMessage(error), 'error'),
       },
     )
   }
 
   function handleExportSchedule() {
-    setNotice('')
     exportScheduleMutation.mutate(currentPeriod?.id, {
       onSuccess: ({ blob, filename }) => {
         const fileUrl = URL.createObjectURL(blob)
         const link = document.createElement('a')
-
         link.href = fileUrl
         link.download = filename
         link.click()
         URL.revokeObjectURL(fileUrl)
-        setNotice('Экспорт сформирован.')
+        toast('Экспорт сформирован.')
       },
-      onError: (error) => setNotice(getApiErrorMessage(error)),
+      onError: (error) => toast(getApiErrorMessage(error), 'error'),
     })
   }
 
@@ -484,12 +476,6 @@ export default function ManagerDashboard({
           </div>
         </section>
 
-        <p
-          className={`min-h-6 px-1 text-sm font-bold ${notice ? 'text-black' : 'text-transparent'
-            }`}
-        >
-          {notice || 'Нет уведомления'}
-        </p>
       </div>
     </main>
   )
