@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -36,10 +36,54 @@ def require_manager(current_user: User = Depends(get_current_active_user)):
     return current_user
 
 
-def _change_request_to_manager_response(change_request: ScheduleChangeRequest) -> ScheduleChangeRequestManagerOut:
-    proposed_days = {
-        day_str: payload for day_str, payload in (change_request.proposed_schedule or {}).items()
+def _get_current_schedule_days(
+    db: Session,
+    *,
+    user_id: int,
+    period_id: int,
+) -> dict[date, dict]:
+    entries = (
+        db.query(ScheduleEntry)
+        .filter(
+            ScheduleEntry.user_id == user_id,
+            ScheduleEntry.period_id == period_id,
+        )
+        .all()
+    )
+    return {
+        entry.day: {
+            "status": entry.status,
+            "meta": entry.meta,
+        }
+        for entry in entries
     }
+
+
+def _get_changed_days(
+    current_days: dict[date, dict],
+    proposed_days: dict[date, dict],
+) -> list[date]:
+    return [
+        day
+        for day in sorted(set(current_days) | set(proposed_days))
+        if current_days.get(day) != proposed_days.get(day)
+    ]
+
+
+def _change_request_to_manager_response(
+    change_request: ScheduleChangeRequest,
+    *,
+    db: Session,
+) -> ScheduleChangeRequestManagerOut:
+    proposed_days = {
+        datetime.fromisoformat(day_str).date(): payload
+        for day_str, payload in (change_request.proposed_schedule or {}).items()
+    }
+    current_days = _get_current_schedule_days(
+        db,
+        user_id=change_request.user_id,
+        period_id=change_request.period_id,
+    )
     return ScheduleChangeRequestManagerOut(
         id=change_request.id,
         user_id=change_request.user_id,
@@ -47,16 +91,15 @@ def _change_request_to_manager_response(change_request: ScheduleChangeRequest) -
         status=change_request.status,
         employee_comment=change_request.employee_comment,
         manager_comment=change_request.manager_comment,
-        proposed_days={
-            datetime.fromisoformat(day_str).date(): payload
-            for day_str, payload in proposed_days.items()
-        },
+        proposed_days=proposed_days,
         created_at=change_request.created_at,
         resolved_at=change_request.resolved_at,
         resolved_by_manager_id=change_request.resolved_by_manager_id,
         full_name=change_request.user.full_name,
         email=change_request.user.email,
         alliance=change_request.user.alliance,
+        current_days=current_days,
+        changed_days=_get_changed_days(current_days, proposed_days),
     )
 
 
@@ -182,7 +225,10 @@ def get_pending_schedule_change_requests(
         .order_by(ScheduleChangeRequest.created_at.desc())
         .all()
     )
-    return [_change_request_to_manager_response(change_request) for change_request in requests]
+    return [
+        _change_request_to_manager_response(change_request, db=db)
+        for change_request in requests
+    ]
 
 
 @router.put("/schedule-change-requests/{request_id}/approve", response_model=ScheduleChangeRequestManagerOut)
@@ -227,7 +273,7 @@ def approve_schedule_change_request(
     change_request.resolved_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(change_request)
-    return _change_request_to_manager_response(change_request)
+    return _change_request_to_manager_response(change_request, db=db)
 
 
 @router.put("/schedule-change-requests/{request_id}/reject", response_model=ScheduleChangeRequestManagerOut)
@@ -256,7 +302,7 @@ def reject_schedule_change_request(
     change_request.resolved_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(change_request)
-    return _change_request_to_manager_response(change_request)
+    return _change_request_to_manager_response(change_request, db=db)
 
 
 @router.get("/vacation-days/pending", response_model=List[UserOut])
