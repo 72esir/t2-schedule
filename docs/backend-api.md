@@ -195,6 +195,44 @@ Possible responses:
 - active period object
 - `null` if no alliance or no active period
 
+### GET `/periods/templates`
+
+Returns available backend period templates.
+
+Auth required: yes
+Roles: `manager`
+
+Response:
+
+```json
+[
+  {
+    "type": "week",
+    "label": "1 week",
+    "description": "Creates a 7-day period starting from period_start.",
+    "requires_period_end": false
+  },
+  {
+    "type": "two_weeks",
+    "label": "2 weeks",
+    "description": "Creates a 14-day period starting from period_start.",
+    "requires_period_end": false
+  },
+  {
+    "type": "month",
+    "label": "Calendar month",
+    "description": "Creates a period from period_start to the last day of that month.",
+    "requires_period_end": false
+  },
+  {
+    "type": "custom",
+    "label": "Custom range",
+    "description": "Creates a period using explicit period_start and period_end.",
+    "requires_period_end": true
+  }
+]
+```
+
 ### POST `/periods`
 
 Creates a new active period for current manager alliance.
@@ -216,6 +254,66 @@ Notes:
 
 - Alliance is taken from current user, not from request body.
 - Previous active period in same alliance is closed automatically.
+
+### POST `/periods/from-template`
+
+Creates a new active period for current manager alliance using a backend template preset.
+
+Auth required: yes
+Roles: `manager`
+
+Request examples:
+
+`week`
+
+```json
+{
+  "template_type": "week",
+  "period_start": "2026-05-01",
+  "deadline": "2026-04-30T18:00:00Z"
+}
+```
+
+`two_weeks`
+
+```json
+{
+  "template_type": "two_weeks",
+  "period_start": "2026-05-01",
+  "deadline": "2026-04-30T18:00:00Z"
+}
+```
+
+`month`
+
+```json
+{
+  "template_type": "month",
+  "period_start": "2026-05-01",
+  "deadline": "2026-04-30T18:00:00Z"
+}
+```
+
+`custom`
+
+```json
+{
+  "template_type": "custom",
+  "period_start": "2026-05-01",
+  "period_end": "2026-05-20",
+  "deadline": "2026-04-30T18:00:00Z"
+}
+```
+
+Rules:
+
+- `week` sets `period_end = period_start + 6 days`
+- `two_weeks` sets `period_end = period_start + 13 days`
+- `month` sets `period_end` to the last day of the month of `period_start`
+- `custom` requires explicit `period_end`
+- For non-`custom` templates, `period_end` must not be sent
+- Alliance is taken from current user, not from request body
+- Previous active period in same alliance is closed automatically
 
 ### POST `/periods/{period_id}/close`
 

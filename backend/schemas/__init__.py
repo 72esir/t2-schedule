@@ -1,4 +1,5 @@
-from datetime import date, datetime
+from calendar import monthrange
+from datetime import date, datetime, timedelta
 from typing import Annotated, Dict, Literal, Optional, Union
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
@@ -204,6 +205,50 @@ class CollectionPeriodCreate(BaseModel):
     period_start: date
     period_end: date
     deadline: datetime
+
+    @model_validator(mode="after")
+    def validate_period_range(self):
+        if self.period_end < self.period_start:
+            raise ValueError("period_end must be on or after period_start")
+        return self
+
+
+PeriodTemplateType = Literal["week", "two_weeks", "month", "custom"]
+
+
+class PeriodTemplateOut(BaseModel):
+    type: PeriodTemplateType
+    label: str
+    description: str
+    requires_period_end: bool
+
+
+class CollectionPeriodFromTemplateCreate(BaseModel):
+    template_type: PeriodTemplateType
+    period_start: date
+    deadline: datetime
+    period_end: Optional[date] = None
+
+    @model_validator(mode="after")
+    def validate_template_payload(self):
+        if self.template_type == "custom":
+            if self.period_end is None:
+                raise ValueError("period_end is required for custom template")
+            if self.period_end < self.period_start:
+                raise ValueError("period_end must be on or after period_start")
+        elif self.period_end is not None:
+            raise ValueError("period_end is only allowed for custom template")
+        return self
+
+    def resolve_period_end(self) -> date:
+        if self.template_type == "week":
+            return self.period_start + timedelta(days=6)
+        if self.template_type == "two_weeks":
+            return self.period_start + timedelta(days=13)
+        if self.template_type == "month":
+            last_day = monthrange(self.period_start.year, self.period_start.month)[1]
+            return date(self.period_start.year, self.period_start.month, last_day)
+        return self.period_end
 
 
 class ScheduleTemplateCreate(BaseModel):

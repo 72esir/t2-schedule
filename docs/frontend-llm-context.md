@@ -61,6 +61,7 @@ Important:
 - Login
 - Dashboard with current period stats
 - Create period
+- Create period from template: `week`, `two_weeks`, `month`, `custom`
 - Close period
 - Employee list
 - Pending employee verification queue
@@ -102,4 +103,21 @@ Recommended API for that screen:
 ## API reference
 
 Use `docs/backend-api.md` as the source of truth for requests and responses.
+
+## Period template flow
+
+Manager period creation should support two modes:
+
+- manual range via `POST /periods`
+- template-based creation via `POST /periods/from-template`
+
+Recommended frontend flow:
+
+1. Call `GET /periods/templates`
+2. Show template cards or radio buttons
+3. Collect:
+   - `period_start`
+   - `deadline`
+   - `period_end` only when template is `custom`
+4. Send selected template payload to `POST /periods/from-template`
 
