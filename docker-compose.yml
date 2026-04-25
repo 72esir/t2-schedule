@@ -31,10 +31,12 @@ services:
       JWT_SECRET_KEY: CHANGE_ME_TO_A_LONG_RANDOM_SECRET
       JWT_ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 1440
+      AUTO_CREATE_SCHEMA: "false"
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app/backend
+      - ./alembic.ini:/app/alembic.ini
 
 volumes:
   postgres_data:

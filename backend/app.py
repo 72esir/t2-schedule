@@ -7,6 +7,7 @@ from backend.api.routes.manager import router as manager_router
 from backend.api.routes.periods import router as periods_router
 from backend.api.routes.schedule import router as schedule_router
 from backend.api.routes.templates import router as templates_router
+from backend.core.config import settings
 from backend.db import Base, engine
 
 
@@ -17,7 +18,8 @@ def create_app() -> FastAPI:
         version="1.0.0",
     )
 
-    Base.metadata.create_all(bind=engine)
+    if settings.AUTO_CREATE_SCHEMA:
+        Base.metadata.create_all(bind=engine)
 
     app.add_middleware(
         CORSMiddleware,

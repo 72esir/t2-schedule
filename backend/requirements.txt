@@ -9,4 +9,5 @@ pydantic-settings==2.5.2
 openpyxl==3.1.5
 email-validator==2.2.0
 python-multipart==0.0.9
+alembic==1.13.3
 
