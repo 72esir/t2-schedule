@@ -375,6 +375,46 @@ Deadline rule:
 - Employee can update schedule only until the active period `deadline`.
 - If deadline has passed, backend returns `403`.
 
+### POST `/schedules/change-request`
+
+Creates one post-deadline schedule review request for the current active period.
+
+Auth required: yes
+Role: verified user
+
+Rules:
+
+- available only after the current period deadline
+- one employee can create only one request per current period
+- request stores a proposed new version of the schedule
+- manager later approves or rejects this request
+
+Request:
+
+```json
+{
+  "employee_comment": "Need to correct late shift changes",
+  "days": {
+    "2026-05-01": {
+      "status": "shift",
+      "meta": {
+        "shiftStart": "10:00",
+        "shiftEnd": "19:00"
+      }
+    }
+  }
+}
+```
+
+### GET `/schedules/change-request/me`
+
+Returns current employee request for the active period, if it exists.
+
+Possible responses:
+
+- request object
+- `null` if no request exists
+
 ### GET `/schedules/by-user/{user_id}`
 
 Returns one employee schedule for manager review.
@@ -497,6 +537,7 @@ Response:
   "pending_count": 15,
   "pending_verification_count": 4,
   "pending_vacation_moderation_count": 6,
+  "pending_schedule_change_requests_count": 3,
   "employees_with_violations_count": 5,
   "problem_employees": [
     {
@@ -525,7 +566,45 @@ Notes:
 
 - `current_period` can be `null` if there is no active period
 - `pending_count` is based on verified employees who have not submitted schedule entries in the active period
+- `pending_schedule_change_requests_count` is the number of unresolved post-deadline review requests
 - `problem_employees` includes only employees from the current alliance who already have schedule entries and at least one validation violation
+
+### GET `/manager/schedule-change-requests/pending`
+
+Returns pending post-deadline schedule review requests for the current manager alliance.
+
+Auth required: yes
+Roles: `manager`
+
+### PUT `/manager/schedule-change-requests/{request_id}/approve`
+
+Approves a post-deadline request and replaces the employee schedule with the proposed version.
+
+Auth required: yes
+Roles: `manager`
+
+Request:
+
+```json
+{
+  "manager_comment": "Approved after review"
+}
+```
+
+### PUT `/manager/schedule-change-requests/{request_id}/reject`
+
+Rejects a post-deadline request without changing the stored schedule.
+
+Auth required: yes
+Roles: `manager`
+
+Request:
+
+```json
+{
+  "manager_comment": "Rejected, changes conflict with staffing plan"
+}
+```
 
 ### GET `/manager/users`
 

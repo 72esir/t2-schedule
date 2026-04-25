@@ -52,3 +52,37 @@ CREATE TABLE IF NOT EXISTS collection_periods (
 
 CREATE INDEX IF NOT EXISTS idx_collection_periods_alliance ON collection_periods(alliance);
 
+CREATE TABLE IF NOT EXISTS schedule_templates (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    work_days INTEGER NOT NULL,
+    rest_days INTEGER NOT NULL,
+    shift_start VARCHAR(5) NOT NULL,
+    shift_end VARCHAR(5) NOT NULL,
+    has_break BOOLEAN NOT NULL DEFAULT FALSE,
+    break_start VARCHAR(5),
+    break_end VARCHAR(5),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_schedule_templates_user_id ON schedule_templates(user_id);
+
+CREATE TABLE IF NOT EXISTS schedule_change_requests (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    period_id INTEGER NOT NULL REFERENCES collection_periods(id) ON DELETE CASCADE,
+    status VARCHAR(32) NOT NULL DEFAULT 'pending',
+    employee_comment TEXT,
+    manager_comment TEXT,
+    proposed_schedule JSONB NOT NULL,
+    resolved_by_manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    resolved_at TIMESTAMPTZ,
+    CONSTRAINT uq_schedule_change_request_user_period UNIQUE (user_id, period_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_schedule_change_requests_period_id ON schedule_change_requests(period_id);
+CREATE INDEX IF NOT EXISTS idx_schedule_change_requests_status ON schedule_change_requests(status);
+

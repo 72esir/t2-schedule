@@ -4,7 +4,7 @@ from typing import Annotated, Dict, Literal, Optional, Union
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
-from backend.models import UserRole, VacationDaysStatus
+from backend.models import ScheduleChangeRequestStatus, UserRole, VacationDaysStatus
 
 
 class Token(BaseModel):
@@ -82,6 +82,7 @@ class ManagerDashboardOut(BaseModel):
     pending_count: int
     pending_verification_count: int
     pending_vacation_moderation_count: int
+    pending_schedule_change_requests_count: int
     employees_with_violations_count: int
     problem_employees: list[ManagerProblemEmployeeOut]
 
@@ -178,6 +179,34 @@ ScheduleDayPayload = Annotated[
 
 class ScheduleBulkUpdate(BaseModel):
     days: Dict[date, ScheduleDayPayload]
+
+
+class ScheduleChangeRequestCreate(BaseModel):
+    days: Dict[date, ScheduleDayPayload]
+    employee_comment: Optional[str] = None
+
+
+class ScheduleChangeRequestDecision(BaseModel):
+    manager_comment: Optional[str] = None
+
+
+class ScheduleChangeRequestOut(BaseModel):
+    id: int
+    user_id: int
+    period_id: int
+    status: ScheduleChangeRequestStatus
+    employee_comment: Optional[str] = None
+    manager_comment: Optional[str] = None
+    proposed_days: Dict[date, ScheduleDayPayload]
+    created_at: datetime
+    resolved_at: Optional[datetime] = None
+    resolved_by_manager_id: Optional[int] = None
+
+
+class ScheduleChangeRequestManagerOut(ScheduleChangeRequestOut):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    alliance: Optional[str] = None
 
 
 class ScheduleForUser(BaseModel):

@@ -36,6 +36,12 @@ class VacationDaysStatus(str, enum.Enum):
     ADJUSTED = "adjusted"
 
 
+class ScheduleChangeRequestStatus(str, enum.Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -72,6 +78,12 @@ class User(Base):
         "VerificationToken", back_populates="user", cascade="all, delete-orphan"
     )
     templates = relationship("ScheduleTemplate", back_populates="user", cascade="all, delete-orphan")
+    schedule_change_requests = relationship(
+        "ScheduleChangeRequest",
+        foreign_keys="ScheduleChangeRequest.user_id",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
 
 class VerificationToken(Base):
@@ -142,4 +154,31 @@ class CollectionPeriod(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
         nullable=False,
+    )
+
+
+class ScheduleChangeRequest(Base):
+    __tablename__ = "schedule_change_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    period_id = Column(Integer, ForeignKey("collection_periods.id", ondelete="CASCADE"), nullable=False)
+    status = Column(
+        Enum(ScheduleChangeRequestStatus),
+        default=ScheduleChangeRequestStatus.PENDING,
+        nullable=False,
+    )
+    employee_comment = Column(Text, nullable=True)
+    manager_comment = Column(Text, nullable=True)
+    proposed_schedule = Column(JSONType, nullable=False)
+    resolved_by_manager_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id], back_populates="schedule_change_requests")
+    period = relationship("CollectionPeriod")
+    resolved_by_manager = relationship("User", foreign_keys=[resolved_by_manager_id])
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "period_id", name="uq_schedule_change_request_user_period"),
     )
