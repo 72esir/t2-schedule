@@ -3,7 +3,7 @@ from typing import Dict, Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
-from backend.models import UserRole
+from backend.models import UserRole, VacationDaysStatus
 
 
 class Token(BaseModel):
@@ -23,12 +23,12 @@ class UserBase(BaseModel):
     full_name: Optional[str] = None
     alliance: Optional[str] = None
     category: Optional[str] = None
-    role: UserRole = UserRole.USER
 
 
-class UserCreate(UserBase):
+class EmployeeRegisterRequest(UserBase):
     email: EmailStr
     password: str
+    vacation_days_declared: Optional[int] = Field(default=None, ge=0, le=365)
 
     @field_validator("password")
     @classmethod
@@ -38,11 +38,20 @@ class UserCreate(UserBase):
         return value
 
 
+class VacationDaysModerationRequest(BaseModel):
+    approved_days: int = Field(..., ge=0, le=365)
+    status: VacationDaysStatus
+
+
 class UserOut(UserBase):
     id: int
     email: Optional[EmailStr] = None
     registered: bool
     is_verified: bool
+    role: UserRole
+    vacation_days_declared: Optional[int] = None
+    vacation_days_approved: Optional[int] = None
+    vacation_days_status: VacationDaysStatus
 
     class Config:
         from_attributes = True
@@ -118,4 +127,3 @@ class ScheduleTemplateOut(BaseModel):
 
     class Config:
         from_attributes = True
-

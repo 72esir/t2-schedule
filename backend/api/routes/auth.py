@@ -12,14 +12,14 @@ from backend.core import (
     verify_password,
 )
 from backend.db import get_db
-from backend.models import User, VerificationToken
-from backend.schemas import Token, UserCreate, UserMe, VerificationRequest
+from backend.models import User, UserRole, VacationDaysStatus, VerificationToken
+from backend.schemas import EmployeeRegisterRequest, Token, UserMe, VerificationRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserMe, status_code=status.HTTP_201_CREATED)
-def register_user(payload: UserCreate, db: Session = Depends(get_db)):
+def register_user(payload: EmployeeRegisterRequest, db: Session = Depends(get_db)):
     existing = (
         db.query(User)
         .filter(
@@ -40,7 +40,10 @@ def register_user(payload: UserCreate, db: Session = Depends(get_db)):
         full_name=payload.full_name,
         alliance=payload.alliance,
         category=payload.category,
-        role=payload.role,
+        role=UserRole.USER,
+        vacation_days_declared=payload.vacation_days_declared,
+        vacation_days_approved=None,
+        vacation_days_status=VacationDaysStatus.PENDING,
     )
     db.add(user)
     db.commit()
@@ -101,4 +104,3 @@ def verify_account(payload: VerificationRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserMe)
 def get_me(current_user: User = Depends(get_current_active_user)):
     return current_user
-
