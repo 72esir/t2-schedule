@@ -11,7 +11,7 @@ const roles = [
   { value: 'admin', label: 'Администратор' },
 ] as const
 
-export default function authForm() {
+export default function AuthForm() {
   const [role, setRole] = useState<'staff' | 'admin'>('staff')
   const [email, setEmail] = useState('manager@company.ru')
   const [password, setPassword] = useState('')

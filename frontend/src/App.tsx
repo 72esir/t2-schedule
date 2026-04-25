@@ -1,10 +1,10 @@
-import { useState } from 'react'
-import authForm from './pages/auth'
+import EmployeeDashboard from './pages/EmployeeDashboard'
 
 function App() {
 
   return (
     <>
+      <EmployeeDashboard />
     </>
   )
 }
