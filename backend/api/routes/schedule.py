@@ -3,6 +3,7 @@ from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from pydantic import TypeAdapter
 
 from backend.core import get_current_verified_user, require_role
 from backend.db import get_db
@@ -17,6 +18,19 @@ from backend.schemas import (
 from backend.services import build_schedule_summary, build_schedule_validation
 
 router = APIRouter(prefix="/schedules", tags=["schedules"])
+schedule_day_payload_adapter = TypeAdapter(ScheduleDayPayload)
+
+
+def _serialize_meta(meta):
+    if meta is None:
+        return None
+    if hasattr(meta, "model_dump"):
+        return meta.model_dump()
+    return meta
+
+
+def _deserialize_day_payload(status: str, meta):
+    return schedule_day_payload_adapter.validate_python({"status": status, "meta": meta})
 
 
 def get_current_period(db: Session, alliance: Optional[str]) -> Optional[CollectionPeriod]:
@@ -51,7 +65,7 @@ def get_my_schedule(
         )
         .all()
     )
-    return {entry.day: ScheduleDayPayload(status=entry.status, meta=entry.meta) for entry in entries}
+    return {entry.day: _deserialize_day_payload(entry.status, entry.meta) for entry in entries}
 
 
 @router.put("/me", response_model=Dict[date, ScheduleDayPayload])
@@ -87,7 +101,7 @@ def update_my_schedule(
                 period_id=current_period.id,
                 day=day,
                 status=day_payload.status,
-                meta=day_payload.meta,
+                meta=_serialize_meta(day_payload.meta),
             )
         )
 
@@ -97,7 +111,7 @@ def update_my_schedule(
         ScheduleEntry.user_id == current_user.id,
         ScheduleEntry.period_id == current_period.id,
     ).all()
-    return {entry.day: ScheduleDayPayload(status=entry.status, meta=entry.meta) for entry in entries}
+    return {entry.day: _deserialize_day_payload(entry.status, entry.meta) for entry in entries}
 
 
 @router.get("/me/summary", response_model=ScheduleSummary)
@@ -147,7 +161,7 @@ def get_schedule_for_user(
         )
         .all()
     )
-    schedule_map = {entry.day: ScheduleDayPayload(status=entry.status, meta=entry.meta) for entry in entries}
+    schedule_map = {entry.day: _deserialize_day_payload(entry.status, entry.meta) for entry in entries}
 
     return ScheduleForUser(user=user, entries=schedule_map, vacation_work=None)
 
