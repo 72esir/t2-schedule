@@ -172,6 +172,16 @@ Response:
 
 Returns current authenticated user.
 
+### GET `/auth/me/streak`
+
+Returns current employee streak based on completed alliance periods.
+
+Rules:
+
+- only periods whose deadline has already passed are evaluated
+- period counts as success if employee saved schedule before deadline
+- any post-deadline schedule change request breaks streak for that period
+
 ### POST `/auth/verify`
 
 Verifies account using verification token.
@@ -656,6 +666,10 @@ Query params:
 Behavior:
 
 - If manager does not pass `alliance`, backend automatically restricts to manager's alliance.
+
+### GET `/manager/streaks`
+
+Returns streak leaderboard for verified employees in current manager alliance.
 
 ### GET `/manager/vacation-days/pending`
 

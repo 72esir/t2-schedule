@@ -23,9 +23,10 @@ from backend.schemas import (
     ScheduleChangeRequestDecision,
     ScheduleChangeRequestManagerOut,
     UserOut,
+    UserStreakLeaderboardItem,
     VacationDaysModerationRequest,
 )
-from backend.services import build_schedule_validation
+from backend.services import build_alliance_streak_leaderboard, build_schedule_validation
 
 router = APIRouter(prefix="/manager", tags=["manager"])
 
@@ -338,6 +339,14 @@ def get_pending_verification_users(
         .order_by(User.created_at.desc())
         .all()
     )
+
+
+@router.get("/streaks", response_model=List[UserStreakLeaderboardItem])
+def get_streak_leaderboard(
+    current_user: User = Depends(require_manager),
+    db: Session = Depends(get_db),
+):
+    return build_alliance_streak_leaderboard(db, alliance=current_user.alliance)
 
 
 @router.get("/users", response_model=List[UserOut])

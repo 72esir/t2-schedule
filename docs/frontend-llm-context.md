@@ -9,6 +9,7 @@ Use this file as context for generating frontend code against the current backen
   - can login
   - fills schedule for current alliance period
   - can declare remaining vacation days during registration
+  - can see personal streak based on completed periods
 
 - Manager:
   - login only
@@ -16,6 +17,7 @@ Use this file as context for generating frontend code against the current backen
   - sees employee lists and submission stats
   - reviews employee schedules
   - moderates employee vacation day declarations
+  - can see streak leaderboard for alliance employees
 
 ## UI entry flow
 
@@ -58,12 +60,14 @@ Important:
 - Autosave status based on `GET /schedules/me/state`
 - Hours summary by day/week/period
 - Validation warnings for weekly hours and work streak
+- Personal streak widget via `GET /auth/me/streak`
 
 ## Required manager screens
 
 - Login
 - Dashboard with current period stats
 - Dashboard summary via `GET /manager/dashboard`
+- Streak leaderboard via `GET /manager/streaks`
 - Create period
 - Create period from template: `week`, `two_weeks`, `month`, `custom`
 - Close period
