@@ -114,7 +114,15 @@ def cleanup_demo_data(session) -> None:
     session.commit()
 
 
-def add_schedule_entries(session, *, user_id: int, period_id: int, start_day: date, days: list[dict]) -> None:
+def add_schedule_entries(
+    session,
+    *,
+    user_id: int,
+    period_id: int,
+    start_day: date,
+    days: list[dict],
+    saved_at: datetime | None = None,
+) -> None:
     for offset, payload in enumerate(days):
         session.add(
             ScheduleEntry(
@@ -123,6 +131,8 @@ def add_schedule_entries(session, *, user_id: int, period_id: int, start_day: da
                 day=start_day + timedelta(days=offset),
                 status=payload["status"],
                 meta=payload.get("meta"),
+                created_at=saved_at or datetime.now(timezone.utc),
+                updated_at=saved_at or datetime.now(timezone.utc),
             )
         )
 
@@ -162,6 +172,18 @@ def main() -> int:
         closed_template_start_3 = active_start - timedelta(days=28)
         closed_template_deadline_3 = datetime.combine(
             today - timedelta(days=15),
+            dt_time(hour=18),
+            tzinfo=timezone.utc,
+        )
+        closed_template_start_4 = active_start - timedelta(days=35)
+        closed_template_deadline_4 = datetime.combine(
+            today - timedelta(days=22),
+            dt_time(hour=18),
+            tzinfo=timezone.utc,
+        )
+        closed_template_start_5 = active_start - timedelta(days=42)
+        closed_template_deadline_5 = datetime.combine(
+            today - timedelta(days=29),
             dt_time(hour=18),
             tzinfo=timezone.utc,
         )
@@ -343,6 +365,20 @@ def main() -> int:
             deadline=closed_template_deadline_3,
             is_open=False,
         )
+        closed_template_period_4 = CollectionPeriod(
+            alliance=DEMO_ALLIANCE,
+            period_start=closed_template_start_4,
+            period_end=closed_template_start_4 + timedelta(days=6),
+            deadline=closed_template_deadline_4,
+            is_open=False,
+        )
+        closed_template_period_5 = CollectionPeriod(
+            alliance=DEMO_ALLIANCE,
+            period_start=closed_template_start_5,
+            period_end=closed_template_start_5 + timedelta(days=6),
+            deadline=closed_template_deadline_5,
+            is_open=False,
+        )
         expired_period = CollectionPeriod(
             alliance=DEMO_ALLIANCE,
             period_start=expired_start,
@@ -353,6 +389,8 @@ def main() -> int:
         session.add_all(
             [
                 active_period,
+                closed_template_period_5,
+                closed_template_period_4,
                 closed_template_period_1,
                 closed_template_period_2,
                 closed_template_period_3,
@@ -364,6 +402,8 @@ def main() -> int:
         session.refresh(closed_template_period_1)
         session.refresh(closed_template_period_2)
         session.refresh(closed_template_period_3)
+        session.refresh(closed_template_period_4)
+        session.refresh(closed_template_period_5)
         session.refresh(expired_period)
 
         log("creating employee templates")
@@ -452,6 +492,7 @@ def main() -> int:
             period_id=closed_template_period_1.id,
             start_day=closed_template_period_1.period_start,
             days=repeated_days_employee_1,
+            saved_at=closed_template_period_1.deadline - timedelta(days=1),
         )
         add_schedule_entries(
             session,
@@ -459,6 +500,7 @@ def main() -> int:
             period_id=closed_template_period_2.id,
             start_day=closed_template_period_2.period_start,
             days=repeated_days_employee_1,
+            saved_at=closed_template_period_2.deadline - timedelta(days=1),
         )
         add_schedule_entries(
             session,
@@ -466,6 +508,7 @@ def main() -> int:
             period_id=closed_template_period_1.id,
             start_day=closed_template_period_1.period_start,
             days=repeated_days_employee_2,
+            saved_at=closed_template_period_1.deadline - timedelta(days=1),
         )
         add_schedule_entries(
             session,
@@ -473,6 +516,23 @@ def main() -> int:
             period_id=closed_template_period_2.id,
             start_day=closed_template_period_2.period_start,
             days=repeated_days_employee_2,
+            saved_at=closed_template_period_2.deadline - timedelta(days=1),
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_6.id,
+            period_id=closed_template_period_5.id,
+            start_day=closed_template_period_5.period_start,
+            days=repeated_days_employee_6,
+            saved_at=closed_template_period_5.deadline - timedelta(days=1),
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_6.id,
+            period_id=closed_template_period_4.id,
+            start_day=closed_template_period_4.period_start,
+            days=repeated_days_employee_6,
+            saved_at=closed_template_period_4.deadline - timedelta(days=1),
         )
         add_schedule_entries(
             session,
@@ -480,6 +540,7 @@ def main() -> int:
             period_id=closed_template_period_2.id,
             start_day=closed_template_period_2.period_start,
             days=repeated_days_employee_6,
+            saved_at=closed_template_period_2.deadline - timedelta(days=1),
         )
         add_schedule_entries(
             session,
@@ -487,6 +548,23 @@ def main() -> int:
             period_id=closed_template_period_3.id,
             start_day=closed_template_period_3.period_start,
             days=repeated_days_employee_6,
+            saved_at=closed_template_period_3.deadline - timedelta(days=1),
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_6.id,
+            period_id=closed_template_period_1.id,
+            start_day=closed_template_period_1.period_start,
+            days=repeated_days_employee_6,
+            saved_at=closed_template_period_1.deadline - timedelta(days=1),
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_6.id,
+            period_id=expired_period.id,
+            start_day=expired_period.period_start,
+            days=repeated_days_employee_6,
+            saved_at=expired_period.deadline - timedelta(days=1),
         )
         add_schedule_entries(
             session,
@@ -494,6 +572,7 @@ def main() -> int:
             period_id=closed_template_period_1.id,
             start_day=closed_template_period_1.period_start,
             days=repeated_days_employee_7,
+            saved_at=closed_template_period_1.deadline - timedelta(days=1),
         )
         add_schedule_entries(
             session,
@@ -501,6 +580,7 @@ def main() -> int:
             period_id=closed_template_period_3.id,
             start_day=closed_template_period_3.period_start,
             days=repeated_days_employee_7,
+            saved_at=closed_template_period_3.deadline - timedelta(days=1),
         )
 
         log("creating active period schedules")
@@ -661,6 +741,9 @@ def main() -> int:
         print("- employee2@company.ru")
         print("- employee6@company.ru")
         print("- employee7@company.ru")
+        print()
+        print("Redeemable streak should be available for:")
+        print("- employee6@company.ru")
         return 0
     finally:
         session.close()
