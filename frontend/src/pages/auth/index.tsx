@@ -10,20 +10,13 @@ import { getApiErrorMessage } from '../../api/client'
 import { useLoginMutation, useRegisterMutation } from '../../api/queries'
 import t2Logo from '../../assets/t2-logo.svg'
 
-type EntryRole = 'manager' | 'user'
 type AuthMode = 'login' | 'register'
 
 interface AuthPageProps {
   sessionNotice?: string
 }
 
-const roles: { value: EntryRole; label: string }[] = [
-  { value: 'user', label: 'Сотрудник' },
-  { value: 'manager', label: 'Менеджер' },
-]
-
 export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
-  const [entryRole, setEntryRole] = useState<EntryRole>('user')
   const [mode, setMode] = useState<AuthMode>('login')
   const [loginEmail, setLoginEmail] = useState('manager@company.ru')
   const [loginPassword, setLoginPassword] = useState('')
@@ -35,15 +28,6 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
   const [notice, setNotice] = useState(sessionNotice)
   const loginMutation = useLoginMutation()
   const registerMutation = useRegisterMutation()
-
-  function handleRoleChange(nextRole: EntryRole) {
-    setEntryRole(nextRole)
-    setNotice('')
-
-    if (nextRole === 'manager') {
-      setMode('login')
-    }
-  }
 
   function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -132,161 +116,142 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
           <div className="flex items-center justify-center p-5 sm:p-8 lg:p-12">
             <div className="w-full max-w-md">
 
-              <div className="mb-6 grid grid-cols-2 rounded-lg bg-[#f0f0f2] p-1">
-                {roles.map(({ value, label }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={entryRole === value}
-                    onClick={() => handleRoleChange(value)}
-                    className={`rounded-md px-4 py-3 text-sm font-black uppercase transition ${entryRole === value
-                      ? 'bg-black text-white'
-                      : 'text-black/55 hover:text-black'
-                      }`}
-                  >
-                    {label}
-                  </button>
-                ))}
+
+              <div className="mb-6 grid grid-cols-2 gap-2">
+                <ModeButton
+                  active={mode === 'login'}
+                  Icon={KeyRound}
+                  label="Вход"
+                  onClick={() => {
+                    setMode('login')
+                    setNotice('')
+                  }}
+                />
+                <ModeButton
+                  active={mode === 'register'}
+                  Icon={UserPlus}
+                  label="Регистрация"
+                  onClick={() => {
+                    setMode('register')
+                    setNotice('')
+                  }}
+                />
               </div>
 
-              {entryRole === 'user' && (
-                <div className="mb-6 grid grid-cols-2 gap-2">
-                  <ModeButton
-                    active={mode === 'login'}
-                    Icon={KeyRound}
-                    label="Вход"
-                    onClick={() => {
-                      setMode('login')
-                      setNotice('')
-                    }}
-                  />
-                  <ModeButton
-                    active={mode === 'register'}
-                    Icon={UserPlus}
-                    label="Регистрация"
-                    onClick={() => {
-                      setMode('register')
-                      setNotice('')
-                    }}
-                  />
-                </div>
-              )}
+              <div key={mode} className="auth-form-enter">
+                {mode === 'login' && (
+                  <form onSubmit={handleLogin} aria-label="Форма входа">
+                    <div className="mb-8">
+                      <h2 className="text-3xl font-black uppercase leading-none sm:text-4xl">
+                        Войти
+                      </h2>
+                    </div>
 
-              {mode === 'login' && (
-                <form onSubmit={handleLogin} aria-label="Форма входа">
-                  <div className="mb-8">
-                    <p className="mb-3 text-sm font-bold text-black/45">
-                      {entryRole === 'manager' ? 'Аккаунт менеджера' : 'Аккаунт сотрудника'}
-                    </p>
-                    <h2 className="text-3xl font-black uppercase leading-none sm:text-4xl">
-                      Войти
-                    </h2>
-                  </div>
-
-                  <TextField
-                    label="Почта"
-                    type="email"
-                    value={loginEmail}
-                    autoComplete="email"
-                    placeholder="name@company.ru"
-                    onChange={setLoginEmail}
-                  />
-                  <TextField
-                    label="Пароль"
-                    type="password"
-                    value={loginPassword}
-                    autoComplete="current-password"
-                    placeholder="Введите пароль"
-                    onChange={setLoginPassword}
-                  />
-
-                  <button
-                    type="submit"
-                    disabled={isLoginDisabled}
-                    className="mt-3 inline-flex h-14 w-full items-center justify-center gap-2 rounded-md bg-[#a7fc00] px-6 text-sm font-black uppercase text-black transition hover:bg-[#95e700] focus:outline-none focus:ring-4 focus:ring-[#a7fc00]/40 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35"
-                  >
-                    <LogIn size={17} aria-hidden="true" />
-                    {loginMutation.isPending ? 'Входим' : 'Войти'}
-                  </button>
-                </form>
-              )}
-
-              {mode === 'register' && entryRole === 'user' && (
-                <form onSubmit={handleRegister} aria-label="Форма регистрации">
-                  <div className="mb-8">
-                    <p className="mb-3 text-sm font-bold text-black/45">
-                      Новый сотрудник
-                    </p>
-                    <h2 className="text-3xl font-black uppercase leading-none sm:text-4xl">
-                      Регистрация
-                    </h2>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
                     <TextField
                       label="Почта"
                       type="email"
-                      value={registerEmail}
+                      value={loginEmail}
                       autoComplete="email"
                       placeholder="name@company.ru"
-                      onChange={setRegisterEmail}
-                      required
+                      onChange={setLoginEmail}
                     />
                     <TextField
                       label="Пароль"
                       type="password"
-                      value={registerPassword}
-                      autoComplete="new-password"
-                      placeholder="Придумайте пароль"
-                      onChange={setRegisterPassword}
-                      required
+                      value={loginPassword}
+                      autoComplete="current-password"
+                      placeholder="Введите пароль"
+                      onChange={setLoginPassword}
                     />
-                  </div>
 
-                  <TextField
-                    label="ФИО"
-                    value={fullName}
-                    placeholder="Иван Иванов"
-                    onChange={setFullName}
-                    required
-                  />
-                  <div className="grid gap-4 sm:grid-cols-2">
+                    <button
+                      type="submit"
+                      disabled={isLoginDisabled}
+                      className="mt-3 inline-flex h-14 w-full items-center justify-center gap-2 rounded-md bg-black px-6 text-sm font-black uppercase text-white transition hover:bg-black/85 focus:outline-none focus:ring-4 focus:ring-black/20 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35"
+                    >
+                      <LogIn size={17} aria-hidden="true" />
+                      {loginMutation.isPending ? 'Входим' : 'Войти'}
+                    </button>
+                  </form>
+                )}
+
+                {mode === 'register' && (
+                  <form onSubmit={handleRegister} aria-label="Форма регистрации">
+                    <div className="mb-8">
+                      <p className="mb-3 text-sm font-bold text-black/45">
+                        Новый сотрудник
+                      </p>
+                      <h2 className="text-3xl font-black uppercase leading-none sm:text-4xl">
+                        Регистрация
+                      </h2>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <TextField
+                        label="Почта"
+                        type="email"
+                        value={registerEmail}
+                        autoComplete="email"
+                        placeholder="name@company.ru"
+                        onChange={setRegisterEmail}
+                        required
+                      />
+                      <TextField
+                        label="Пароль"
+                        type="password"
+                        value={registerPassword}
+                        autoComplete="new-password"
+                        placeholder="Придумайте пароль"
+                        onChange={setRegisterPassword}
+                        required
+                      />
+                    </div>
+
                     <TextField
-                      label="Альянс"
-                      value={alliance}
-                      placeholder="Alliance 1"
-                      onChange={setAlliance}
+                      label="ФИО"
+                      value={fullName}
+                      placeholder="Иван Иванов"
+                      onChange={setFullName}
                       required
                     />
-                    <TextField
-                      label="Дней отпуска"
-                      type="number"
-                      value={vacationDays}
-                      placeholder="14"
-                      min={0}
-                      max={365}
-                      onChange={setVacationDays}
-                      required
-                    />
-                  </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <TextField
+                        label="Альянс"
+                        value={alliance}
+                        placeholder="Alliance 1"
+                        onChange={setAlliance}
+                        required
+                      />
+                      <TextField
+                        label="Дней отпуска"
+                        type="number"
+                        value={vacationDays}
+                        placeholder="14"
+                        min={0}
+                        max={365}
+                        onChange={setVacationDays}
+                        required
+                      />
+                    </div>
 
-                  <button
-                    type="submit"
-                    disabled={isRegisterDisabled}
-                    className="mt-3 inline-flex h-14 w-full items-center justify-center gap-2 rounded-md bg-[#a7fc00] px-6 text-sm font-black uppercase text-black transition hover:bg-[#95e700] focus:outline-none focus:ring-4 focus:ring-[#a7fc00]/40 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35"
-                  >
-                    <UserPlus size={17} aria-hidden="true" />
-                    {registerMutation.isPending ? 'Создаём' : 'Создать аккаунт'}
-                  </button>
-                </form>
-              )}
+                    <button
+                      type="submit"
+                      disabled={isRegisterDisabled}
+                      className="mt-3 inline-flex h-14 w-full items-center justify-center gap-2 rounded-md bg-black px-6 text-sm font-black uppercase text-white transition hover:bg-black/85 focus:outline-none focus:ring-4 focus:ring-black/20 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35"
+                    >
+                      <UserPlus size={17} aria-hidden="true" />
+                      {registerMutation.isPending ? 'Создаём' : 'Создать аккаунт'}
+                    </button>
+                  </form>
+                )}
 
-              <p
-                className={`mt-5 min-h-6 text-sm font-bold ${notice ? 'text-black' : 'text-transparent'
-                  }`}
-              >
-                {notice || 'Нет уведомления'}
-              </p>
+                <p
+                  className={`mt-5 min-h-6 text-sm font-bold ${notice ? 'text-black' : 'text-transparent'
+                    }`}
+                >
+                  {notice || 'Нет уведомления'}
+                </p>
+              </div>
             </div>
           </div>
         </section>

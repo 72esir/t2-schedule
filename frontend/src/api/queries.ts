@@ -11,15 +11,16 @@ import {
   managerApi,
   periodApi,
   scheduleApi,
+  templateApi,
 } from './backend'
 import type {
   CollectionPeriodFromTemplatePayload,
   EmployeeRegisterPayload,
   LoginPayload,
+  ScheduleChangeRequestPayload,
+  ScheduleChangeRequestManagerApproval,
   ScheduleBulkUpdatePayload,
   VacationDaysModerationPayload,
-  ScheduleChangeRequestPayload,
-  ScheduleChangeRequestManagerApproval
 } from './types'
 import { useAuthStore } from '../store/useAuthStore'
 
@@ -41,6 +42,8 @@ export const queryKeys = {
   templates: ['templates'] as const,
   myScheduleState: ['schedules', 'me', 'state'] as const,
   myChangeRequest: ['schedules', 'change-request', 'me'] as const,
+  suggestedTemplate: ['templates', 'suggested', 'current'] as const,
+  myStreak: ['auth', 'me', 'streak'] as const,
 }
 
 export function useMeQuery() {
@@ -70,6 +73,25 @@ export function useLoginMutation() {
 export function useRegisterMutation() {
   return useMutation({
     mutationFn: (payload: EmployeeRegisterPayload) => authApi.register(payload),
+  })
+}
+
+export function useMyStreakQuery(enabled = true) {
+  return useAuthedQuery({
+    queryKey: queryKeys.myStreak,
+    queryFn: authApi.getStreak,
+    enabled,
+  })
+}
+
+export function useRedeemStreakMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => authApi.redeemStreak(),
+    onSuccess: () => {
+      invalidateMany(queryClient, [queryKeys.myStreak])
+    },
   })
 }
 
@@ -359,5 +381,32 @@ function invalidateMany(
 ) {
   queryKeysToInvalidate.forEach((queryKey) => {
     void queryClient.invalidateQueries({ queryKey })
+  })
+}
+
+export function useSuggestedTemplateQuery(enabled: boolean) {
+  const token = useAuthStore((state) => state.token)
+
+  return useQuery({
+    queryKey: queryKeys.suggestedTemplate,
+    queryFn: templateApi.getSuggested,
+    enabled: Boolean(token) && enabled,
+  })
+}
+
+export function useApplySuggestedTemplateMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => templateApi.applySuggested(),
+    onSuccess: () => {
+      invalidateMany(queryClient, [
+        queryKeys.mySchedule,
+        queryKeys.myScheduleState,
+        queryKeys.myScheduleSummary,
+        queryKeys.myScheduleValidation,
+        queryKeys.suggestedTemplate,
+      ])
+    },
   })
 }

@@ -24,7 +24,10 @@ import type {
   ScheduleStatePayload,
   ScheduleChangeRequestPayload,
   PendingScheduleChangeRequest,
-  ScheduleChangeRequestManagerApproval
+  ScheduleChangeRequestManagerApproval,
+  SuggestedTemplate,
+  UserStreak,
+  RedeemStreakResult,
 } from './types'
 
 export const authApi = {
@@ -53,6 +56,16 @@ export const authApi = {
 
   async verify(payload: VerificationPayload): Promise<User> {
     const response = await apiClient.post<User>('/auth/verify', payload)
+    return response.data
+  },
+
+  async getStreak(): Promise<UserStreak> {
+    const response = await apiClient.get<UserStreak>('/auth/me/streak')
+    return response.data
+  },
+
+  async redeemStreak(): Promise<RedeemStreakResult> {
+    const response = await apiClient.post<RedeemStreakResult>('/auth/me/streak/redeem')
     return response.data
   },
 }
@@ -220,6 +233,16 @@ export const templateApi = {
 
   async delete(templateId: number): Promise<void> {
     await apiClient.delete(`/templates/${templateId}`)
+  },
+
+  async getSuggested(): Promise<SuggestedTemplate> {
+    const response = await apiClient.get<SuggestedTemplate>('/templates/suggested/current')
+    return response.data
+  },
+
+  async applySuggested(): Promise<SuggestedTemplate> {
+    const response = await apiClient.post<SuggestedTemplate>('/templates/suggested/current/apply')
+    return response.data
   },
 }
 

@@ -2,8 +2,18 @@ import axios from 'axios'
 
 import { useAuthStore } from '../store/useAuthStore'
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim().replace(
+  /\/+$/,
+  '',
+)
+
+if (!configuredApiBaseUrl) {
+  throw new Error(
+    'VITE_API_BASE_URL is not set. Create frontend/.env from .env.example.',
+  )
+}
+
+export const API_BASE_URL = configuredApiBaseUrl
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -28,7 +38,7 @@ export function getApiErrorMessage(error: unknown): string {
   }
 
   if (!error.response) {
-    return 'Backend недоступен. Проверьте, что API запущен на localhost:8000.'
+    return `Backend недоступен. Проверьте доступность API: ${API_BASE_URL}.`
   }
 
   const detail = error.response.data?.detail
