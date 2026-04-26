@@ -260,7 +260,7 @@ export default function EmployeeDashboard({ user, onLogout }: EmployeeDashboardP
   return (
     <main className="min-h-screen bg-[#f3f3f5] px-3 py-4 text-black sm:px-5 lg:px-8">
       <div className="mx-auto flex min-h-[calc(100vh-32px)] w-full max-w-[1480px] flex-col gap-4">
-        <header className="grid gap-4 rounded-lg border border-black/10 bg-white px-4 py-4 shadow-sm lg:grid-cols-[1fr_auto] lg:items-center lg:px-6">
+        <header className="grid gap-4 rounded-md border border-black/10 bg-white px-4 py-4 lg:grid-cols-[1fr_auto] lg:items-center lg:px-6">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <img src={t2Logo} alt="t2" className="size-10 rounded-md" />
@@ -311,7 +311,7 @@ export default function EmployeeDashboard({ user, onLogout }: EmployeeDashboardP
           </div>
         </header>
 
-        <section className="min-h-0 flex-1 overflow-hidden rounded-lg border border-black/10 bg-white shadow-sm">
+        <section className="min-h-0 flex-1 overflow-hidden rounded-md border border-black/10 bg-white">
           <div className="flex h-full flex-col">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/10 px-4 py-3 lg:px-6">
               <div className="flex-1">
@@ -393,7 +393,7 @@ export default function EmployeeDashboard({ user, onLogout }: EmployeeDashboardP
               )}
 
               {suggestedQuery.data?.has_suggestion && !hideSuggestion && !deadlinePassed && (
-                <div className="relative mb-6 overflow-hidden rounded-xl border border-black/10 bg-white p-5 shadow-lg transition-all animate-in slide-in-from-top-4 duration-500">
+                <div className="relative mb-6 overflow-hidden rounded-md border border-black/10 bg-white p-5 transition-all animate-in slide-in-from-top-4 duration-500">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-start gap-4 min-w-0">
                       <div className="grid size-10 shrink-0 sm:size-12 place-items-center rounded-full bg-[#ff3495]/10 text-[#ff3495]">
@@ -470,7 +470,7 @@ interface EmployeeStateProps {
 function EmployeeState({ Icon, title, text, onLogout, onRetry }: EmployeeStateProps) {
   return (
     <main className="grid min-h-screen place-items-center bg-[#f3f3f5] px-4 text-black">
-      <section className="w-full max-w-md rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+      <section className="w-full max-w-md rounded-md border border-black/10 bg-white p-5">
         <span className="mb-4 grid size-12 place-items-center rounded-md bg-black text-white">
           <Icon size={22} aria-hidden="true" />
         </span>
@@ -531,7 +531,7 @@ function StreakRewardsCard({
   const shouldScrollHistory = (streak?.history.length ?? 0) > 5;
 
   return (
-    <section className="mb-6 overflow-hidden rounded-xl border border-black/10 bg-[linear-gradient(135deg,#ffffff_0%,#f7f7f8_55%,#fff4cf_100%)] shadow-sm">
+    <section className="mb-6 overflow-hidden rounded-md border border-black/10 bg-white">
       <div className="grid gap-5 p-4 lg:grid-cols-[1.1fr_0.9fr] lg:p-5">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -561,7 +561,7 @@ function StreakRewardsCard({
               Icon={Coins}
               label="Бонусы"
               value={isLoading ? '...' : String(streak?.bonus_balance ?? 0)}
-              accent="gold"
+              accent="blue"
             />
           </div>
 
@@ -585,7 +585,7 @@ function StreakRewardsCard({
                 <InfoChip text={`${streak.evaluated_periods_count} периодов в оценке`} />
               </div>
 
-              <div className="mt-4 rounded-lg border border-black/10 bg-white/80 p-4">
+              <div className="mt-4 rounded-md border border-black/10 bg-white p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <p className="text-xs font-black uppercase tracking-[0.12em] text-black/45">
@@ -618,7 +618,7 @@ function StreakRewardsCard({
           )}
         </div>
 
-        <div className="min-w-0 rounded-xl border border-black/10 bg-white/80 p-4">
+        <div className="min-w-0 rounded-md border border-black/10 bg-white p-4">
           <p className="text-xs font-black uppercase tracking-[0.12em] text-black/45">
             История периодов
           </p>
@@ -664,17 +664,17 @@ function RewardMetricTile({
   Icon: typeof Flame;
   label: string;
   value: string;
-  accent: 'pink' | 'lime' | 'gold';
+  accent: 'pink' | 'lime' | 'blue';
 }) {
   const accentClass =
     accent === 'pink'
       ? 'bg-[#ff3495] text-white'
       : accent === 'lime'
         ? 'bg-[#a7fc00] text-black'
-        : 'bg-[#ffd447] text-black';
+        : 'bg-[#00BFFF] text-white';
 
   return (
-    <div className="rounded-xl border border-black/10 bg-white p-4 shadow-sm">
+    <div className="rounded-md border border-black/10 bg-white p-4">
       <div className={`grid size-9 place-items-center rounded-md ${accentClass}`}>
         <Icon size={18} aria-hidden="true" />
       </div>

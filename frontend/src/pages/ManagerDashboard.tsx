@@ -209,7 +209,7 @@ export default function ManagerDashboard({
   return (
     <main className="min-h-screen bg-[#f3f3f5] px-3 py-4 text-black sm:px-5 lg:px-8">
       <div className="mx-auto flex min-h-[calc(100vh-32px)] w-full max-w-[1480px] flex-col gap-4">
-        <header className="grid gap-4 rounded-lg border border-black/10 bg-white px-4 py-4 shadow-sm lg:grid-cols-[1fr_auto] lg:items-center lg:px-6">
+        <header className="grid gap-4 rounded-md border border-black/10 bg-white px-4 py-4 lg:grid-cols-[1fr_auto] lg:items-center lg:px-6">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <img src={t2Logo} alt="t2" className="size-10 rounded-md" />
@@ -270,7 +270,7 @@ export default function ManagerDashboard({
           />
           <MetricTile
             Icon={AlertTriangle}
-            label="Нарушения"
+            label="Замечания"
             value={formatNumber(dashboard?.employees_with_violations_count)}
             tone={
               dashboard?.employees_with_violations_count ? 'warning' : 'success'
@@ -423,7 +423,7 @@ export default function ManagerDashboard({
                           </p>
                         </div>
                         <span className="rounded-md bg-white px-3 py-2 text-xs font-black uppercase text-black">
-                          {employee.violation_count} наруш.
+                          {employee.violation_count} замеч.
                         </span>
                       </div>
                       <p className="mt-2 text-sm font-bold text-black/65">
@@ -435,7 +435,7 @@ export default function ManagerDashboard({
               ) : (
                 <EmptyState
                   Icon={CheckCircle2}
-                  title="Нарушений нет"
+                  title="Замечаний нет"
                   text="Сотрудников с проблемными графиками сейчас нет."
                 />
               )}
@@ -488,7 +488,7 @@ interface PanelProps {
 
 function Panel({ title, children }: PanelProps) {
   return (
-    <section className="rounded-lg border border-black/10 bg-white p-4 shadow-sm lg:p-5">
+    <section className="rounded-md border border-black/10 bg-white p-4 lg:p-5">
       <h2 className="mb-4 text-base sm:text-lg font-black uppercase leading-none">{title}</h2>
       {children}
     </section>
@@ -510,7 +510,7 @@ function MetricTile({
 }: MetricTileProps) {
   return (
     <div
-      className={`rounded-lg border p-2 sm:p-5 shadow-sm flex flex-col justify-between ${tone === 'success'
+      className={`rounded-md border p-2 sm:p-5 flex flex-col justify-between ${tone === 'success'
         ? 'border-[#a7fc00] bg-[#a7fc00] text-black'
         : tone === 'warning'
           ? 'border-2 border-[#ff3495] bg-white'
