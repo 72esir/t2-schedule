@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { Children, useState, type FormEvent, type ReactNode } from 'react'
 import {
   AlertTriangle,
   CalendarDays,
@@ -207,7 +207,7 @@ export default function ManagerDashboard({
     exportScheduleMutation.isPending
 
   return (
-    <main className="min-h-screen bg-[#f3f3f5] px-3 py-4 text-black sm:px-5 lg:px-8">
+    <main className="min-h-screen bg-[#f3f3f5] px-2 py-3 text-black sm:px-5 sm:py-4 lg:px-8">
       <div className="mx-auto flex min-h-[calc(100vh-32px)] w-full max-w-[1480px] flex-col gap-4">
         <header className="grid gap-4 rounded-md border border-black/10 bg-white px-4 py-4 lg:grid-cols-[1fr_auto] lg:items-center lg:px-6">
           <div className="min-w-0">
@@ -226,11 +226,11 @@ export default function ManagerDashboard({
             </h1>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
             <button
               type="button"
               onClick={() => void dashboardQuery.refetch()}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-black/10 bg-white px-4 text-sm font-black uppercase transition hover:border-black focus:outline-none focus:ring-4 focus:ring-black/10"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-black/10 bg-white px-3 text-xs font-black uppercase transition hover:border-black focus:outline-none focus:ring-4 focus:ring-black/10 sm:w-auto sm:px-4 sm:text-sm"
             >
               <RefreshCcw size={16} aria-hidden="true" />
               Обновить
@@ -238,7 +238,7 @@ export default function ManagerDashboard({
             <button
               type="button"
               onClick={onLogout}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-black px-4 text-sm font-black uppercase text-white transition hover:bg-black/85 focus:outline-none focus:ring-4 focus:ring-black/20"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-black px-3 text-xs font-black uppercase text-white transition hover:bg-black/85 focus:outline-none focus:ring-4 focus:ring-black/20 sm:w-auto sm:px-4 sm:text-sm"
             >
               <LogOut size={16} aria-hidden="true" />
               Выйти
@@ -250,7 +250,7 @@ export default function ManagerDashboard({
           <AlertBlock text={getApiErrorMessage(dashboardQuery.error)} />
         )}
 
-        <section className="grid grid-cols-4 gap-2 md:gap-3">
+        <section className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
           <MetricTile
             Icon={Users}
             label="Сотрудники"
@@ -279,7 +279,7 @@ export default function ManagerDashboard({
         </section>
 
         <section className="grid flex-1 gap-4 xl:grid-cols-[1fr_1fr] items-start">
-          <div className="grid gap-4 h-full grid-rows-[auto_auto_1fr]">
+          <div className="grid h-full auto-rows-auto gap-4">
             <Panel title="Текущий период">
               {currentPeriod ? (
                 <div className="space-y-4">
@@ -291,12 +291,12 @@ export default function ManagerDashboard({
                       value={formatDateTime(currentPeriod.deadline)}
                     />
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid gap-2 sm:flex sm:flex-wrap">
                     <button
                       type="button"
                       onClick={handleExportSchedule}
                       disabled={isBusy}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-black px-4 text-sm font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35 focus:outline-none focus:ring-4 focus:ring-black/20"
+                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-black px-4 text-sm font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35 focus:outline-none focus:ring-4 focus:ring-black/20 sm:w-auto"
                     >
                       <Download size={16} aria-hidden="true" />
                       Экспорт
@@ -305,7 +305,7 @@ export default function ManagerDashboard({
                       type="button"
                       onClick={handleClosePeriod}
                       disabled={isBusy}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-black/15 bg-white px-4 text-sm font-black uppercase text-black transition hover:border-black disabled:cursor-not-allowed disabled:text-black/35"
+                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-black/15 bg-white px-4 text-sm font-black uppercase text-black transition hover:border-black disabled:cursor-not-allowed disabled:text-black/35 sm:w-auto"
                     >
                       <XCircle size={16} aria-hidden="true" />
                       Закрыть
@@ -323,7 +323,7 @@ export default function ManagerDashboard({
 
             <Panel title="Создание периода">
               <form onSubmit={handleCreatePeriod} className="space-y-4">
-                <div className="grid gap-2 sm:grid-cols-4">
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                   {templates.map((template) => {
                     const translations: Record<string, { label: string; description: string }> = {
                       week: {
@@ -353,16 +353,16 @@ export default function ManagerDashboard({
                         type="button"
                         aria-pressed={templateType === template.type}
                         onClick={() => setTemplateType(template.type)}
-                        className={`min-h-24 rounded-lg border p-3 text-left transition ${templateType === template.type
+                        className={`min-h-20 rounded-md border p-3 text-left transition sm:min-h-24 ${templateType === template.type
                           ? 'border-black bg-black text-white'
                           : 'border-black/10 bg-white text-black hover:border-black/35'
                           }`}
                       >
-                        <span className="block text-sm font-black uppercase">
+                        <span className="block text-xs font-black uppercase sm:text-sm">
                           {localizedLabel}
                         </span>
                         <span
-                          className={`mt-2 block text-xs font-bold ${templateType === template.type
+                          className={`mt-2 block text-[11px] font-bold leading-snug sm:text-xs ${templateType === template.type
                             ? 'text-white/60'
                             : 'text-black/45'
                             }`}
@@ -374,7 +374,7 @@ export default function ManagerDashboard({
                   })}
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid gap-3 lg:grid-cols-3">
                   <DateField
                     label="Начало"
                     type="date"
@@ -399,7 +399,7 @@ export default function ManagerDashboard({
                 <button
                   type="submit"
                   disabled={createPeriodMutation.isPending}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-black px-5 text-sm font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/15"
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-black px-5 text-sm font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/15 sm:w-auto"
                 >
                   <ShieldCheck size={16} aria-hidden="true" />
                   {createPeriodMutation.isPending ? 'Создаём' : 'Создать период'}
@@ -409,20 +409,20 @@ export default function ManagerDashboard({
 
             <Panel title="Проблемные графики">
               {dashboard?.problem_employees.length ? (
-                <div className="space-y-2 max-h-[460px] pr-2 overflow-y-auto">
+                <MobileExpandableList showAllLabel="Показать замечания" collapseLabel="Свернуть замечания">
                   {dashboard.problem_employees.map((employee) => (
                     <div
                       key={employee.user_id}
-                      className="rounded-lg border-2 border-[#ff3495] bg-white p-3"
+                      className="rounded-md border-2 border-[#ff3495] bg-white p-3"
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <p className="font-black">{employee.full_name}</p>
-                          <p className="text-sm font-bold text-black/55">
+                      <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="truncate font-black">{employee.full_name}</p>
+                          <p className="truncate text-sm font-bold text-black/55">
                             {employee.email ?? 'Почта не указана'}
                           </p>
                         </div>
-                        <span className="rounded-md bg-white px-3 py-2 text-xs font-black uppercase text-black">
+                        <span className="inline-flex w-fit rounded-md bg-white px-3 py-2 text-xs font-black uppercase text-black">
                           {employee.violation_count} замеч.
                         </span>
                       </div>
@@ -431,7 +431,7 @@ export default function ManagerDashboard({
                       </p>
                     </div>
                   ))}
-                </div>
+                </MobileExpandableList>
               ) : (
                 <EmptyState
                   Icon={CheckCircle2}
@@ -488,10 +488,45 @@ interface PanelProps {
 
 function Panel({ title, children }: PanelProps) {
   return (
-    <section className="rounded-md border border-black/10 bg-white p-4 lg:p-5">
-      <h2 className="mb-4 text-base sm:text-lg font-black uppercase leading-none">{title}</h2>
+    <section className="rounded-md border border-black/10 bg-white p-3 sm:p-4 lg:p-5">
+      <h2 className="mb-3 text-sm font-black uppercase leading-none sm:mb-4 sm:text-lg">{title}</h2>
       {children}
     </section>
+  )
+}
+
+function MobileExpandableList({
+  children,
+  showAllLabel = 'Показать весь список',
+  collapseLabel = 'Свернуть список',
+}: {
+  children: ReactNode
+  showAllLabel?: string
+  collapseLabel?: string
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const items = Children.toArray(children)
+  const hasOverflow = items.length > 1
+  const mobileItems = expanded ? items : items.slice(0, 1)
+
+  return (
+    <>
+      <div className="space-y-2 sm:hidden">
+        {mobileItems}
+        {hasOverflow && (
+          <button
+            type="button"
+            onClick={() => setExpanded((current) => !current)}
+            className="inline-flex h-10 w-full items-center justify-center rounded-md border border-black/10 bg-white px-4 text-xs font-black uppercase text-black transition hover:border-black"
+          >
+            {expanded ? collapseLabel : `${showAllLabel} (${items.length})`}
+          </button>
+        )}
+      </div>
+      <div className="hidden space-y-2 sm:block sm:max-h-[460px] sm:overflow-y-auto sm:pr-2">
+        {items}
+      </div>
+    </>
   )
 }
 
@@ -510,19 +545,19 @@ function MetricTile({
 }: MetricTileProps) {
   return (
     <div
-      className={`rounded-md border p-2 sm:p-5 flex flex-col justify-between ${tone === 'success'
+      className={`rounded-md border p-3 sm:p-5 flex min-h-[110px] flex-col justify-between ${tone === 'success'
         ? 'border-[#a7fc00] bg-[#a7fc00] text-black'
         : tone === 'warning'
           ? 'border-2 border-[#ff3495] bg-white'
           : 'border-black/10 bg-white'
         }`}
     >
-      <div className="mb-2 grid size-8 sm:size-10 shrink-0 place-items-center rounded-md bg-white text-black self-start">
-        <Icon size={18} aria-hidden="true" />
+      <div className="mb-2 grid size-8 shrink-0 place-items-center rounded-md bg-white text-black self-start sm:size-10">
+        <Icon size={16} aria-hidden="true" className="sm:size-[18px]" />
       </div>
       <div className="min-w-0">
-        <p className="text-[9px] sm:text-xs font-black uppercase text-black/45 leading-tight truncate">{label}</p>
-        <p className="mt-1 truncate text-base sm:text-3xl font-black leading-none">{value}</p>
+        <p className="text-[10px] font-black uppercase leading-tight text-black/45 sm:text-xs">{label}</p>
+        <p className="mt-1 text-lg font-black leading-none sm:text-3xl">{value}</p>
       </div>
     </div>
   )
@@ -530,9 +565,9 @@ function MetricTile({
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-black/10 bg-[#f7f7f8] p-3">
+    <div className="rounded-md border border-black/10 bg-[#f7f7f8] p-3">
       <p className="text-xs font-black uppercase text-black/45">{label}</p>
-      <p className="mt-1 text-lg font-black leading-none">{value}</p>
+      <p className="mt-1 text-base font-black leading-tight sm:text-lg">{value}</p>
     </div>
   )
 }
@@ -591,19 +626,19 @@ function UserQueue({
   }
 
   return (
-    <div className="space-y-2 max-h-[460px] pr-2 overflow-y-auto">
+    <MobileExpandableList showAllLabel="Показать сотрудников" collapseLabel="Свернуть сотрудников">
       {users.map((employee) => (
         <div
           key={employee.id}
-          className="grid gap-3 rounded-lg border border-black/10 bg-[#f7f7f8] p-3 sm:grid-cols-[1fr_auto] sm:items-center"
+          className="grid gap-3 rounded-md border border-black/10 bg-[#f7f7f8] p-3 sm:grid-cols-[1fr_auto] sm:items-center"
         >
           <UserSummary user={employee} />
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
             <button
               type="button"
               disabled={actionPending}
               onClick={() => onAction(employee)}
-              className="inline-flex h-10 items-center justify-center rounded-md bg-black px-4 text-xs font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/15"
+              className="inline-flex h-10 w-full items-center justify-center rounded-md bg-black px-4 text-xs font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/15 sm:w-auto"
             >
               {actionLabel}
             </button>
@@ -612,7 +647,7 @@ function UserQueue({
                 type="button"
                 disabled={actionPending}
                 onClick={() => onReject(employee)}
-                className="inline-flex h-10 items-center justify-center rounded-md border border-[#ff3495] bg-white px-4 text-xs font-black uppercase text-[#ff3495] transition hover:bg-[#ff3495] hover:text-white disabled:cursor-not-allowed disabled:text-black/35"
+                className="inline-flex h-10 w-full items-center justify-center rounded-md border border-[#ff3495] bg-white px-4 text-xs font-black uppercase text-[#ff3495] transition hover:bg-[#ff3495] hover:text-white disabled:cursor-not-allowed disabled:text-black/35 sm:w-auto"
               >
                 Отклонить
               </button>
@@ -620,7 +655,7 @@ function UserQueue({
           </div>
         </div>
       ))}
-    </div>
+    </MobileExpandableList>
   )
 }
 
@@ -653,7 +688,7 @@ function VacationQueue({
   }
 
   return (
-    <div className="space-y-2 max-h-[460px] pr-2 overflow-y-auto">
+    <MobileExpandableList showAllLabel="Показать заявки" collapseLabel="Свернуть заявки">
       {users.map((employee) => {
         const declaredDays = employee.vacation_days_declared ?? 0
         const approvedValue = approvedByUser[employee.id] ?? String(declaredDays)
@@ -662,9 +697,9 @@ function VacationQueue({
         return (
           <div
             key={employee.id}
-            className="rounded-lg border border-black/10 bg-[#f7f7f8] p-3"
+            className="rounded-md border border-black/10 bg-[#f7f7f8] p-3"
           >
-            <div className="grid gap-3 sm:grid-cols-[1fr_120px] sm:items-start">
+            <div className="grid gap-3 lg:grid-cols-[1fr_120px] lg:items-start">
               <UserSummary user={employee} />
               <label>
                 <span className="mb-2 block text-xs font-black uppercase text-black/45">
@@ -686,14 +721,14 @@ function VacationQueue({
               </label>
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap">
               <button
                 type="button"
                 disabled={actionPending || !Number.isFinite(approvedDays)}
                 onClick={() =>
                   onModerate(employee.id, approvedDays, 'approved')
                 }
-                className="inline-flex h-10 items-center justify-center rounded-md bg-black px-4 text-xs font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35 focus:outline-none focus:ring-4 focus:ring-black/20"
+                className="inline-flex h-10 w-full items-center justify-center rounded-md bg-black px-4 text-xs font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35 focus:outline-none focus:ring-4 focus:ring-black/20 lg:w-auto"
               >
                 Одобрить
               </button>
@@ -703,7 +738,7 @@ function VacationQueue({
                 onClick={() =>
                   onModerate(employee.id, approvedDays, 'adjusted')
                 }
-                className="inline-flex h-10 items-center justify-center rounded-md border border-black/15 bg-white px-4 text-xs font-black uppercase text-black transition hover:border-black disabled:cursor-not-allowed disabled:text-black/35"
+                className="inline-flex h-10 w-full items-center justify-center rounded-md border border-black/15 bg-white px-4 text-xs font-black uppercase text-black transition hover:border-black disabled:cursor-not-allowed disabled:text-black/35 lg:w-auto"
               >
                 Скорректировать
               </button>
@@ -711,7 +746,7 @@ function VacationQueue({
                 type="button"
                 disabled={actionPending}
                 onClick={() => onModerate(employee.id, 0, 'rejected')}
-                className="inline-flex h-10 items-center justify-center rounded-md border border-[#ff3495] bg-white px-4 text-xs font-black uppercase text-[#ff3495] transition hover:bg-[#ff3495] hover:text-white disabled:cursor-not-allowed disabled:text-black/35"
+                className="inline-flex h-10 w-full items-center justify-center rounded-md border border-[#ff3495] bg-white px-4 text-xs font-black uppercase text-[#ff3495] transition hover:bg-[#ff3495] hover:text-white disabled:cursor-not-allowed disabled:text-black/35 sm:col-span-2 lg:w-auto"
               >
                 Отклонить
               </button>
@@ -719,7 +754,7 @@ function VacationQueue({
           </div>
         )
       })}
-    </div>
+    </MobileExpandableList>
   )
 }
 
@@ -849,14 +884,14 @@ function ChangeRequestQueue({
   }
 
   return (
-    <div className="space-y-2 max-h-[460px] pr-2 overflow-y-auto">
+    <MobileExpandableList showAllLabel="Показать запросы" collapseLabel="Свернуть запросы">
       {requests.map((request) => {
         const comment = comments[request.id] ?? ''
 
         return (
           <div
             key={request.id}
-            className="rounded-lg border border-black/10 bg-[#f7f7f8] p-3 text-sm"
+            className="rounded-md border border-black/10 bg-[#f7f7f8] p-3 text-sm"
           >
             <div className="mb-2">
               <p className="font-black text-black">
@@ -887,12 +922,12 @@ function ChangeRequestQueue({
               />
             </label>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap">
               <button
                 type="button"
                 disabled={actionPending}
                 onClick={() => onApprove(request.id, comment.trim())}
-                className="inline-flex h-9 items-center justify-center rounded-md bg-black px-4 text-xs font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35 focus:outline-none focus:ring-4 focus:ring-black/20"
+                className="inline-flex h-10 w-full items-center justify-center rounded-md bg-black px-4 text-xs font-black uppercase text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/35 focus:outline-none focus:ring-4 focus:ring-black/20 lg:w-auto"
               >
                 Одобрить
               </button>
@@ -900,7 +935,7 @@ function ChangeRequestQueue({
                 type="button"
                 disabled={actionPending}
                 onClick={() => onReject(request.id, comment.trim())}
-                className="inline-flex h-9 items-center justify-center rounded-md border border-[#ff3495] bg-white px-4 text-xs font-black uppercase text-[#ff3495] transition hover:bg-[#ff3495] hover:text-white disabled:cursor-not-allowed disabled:text-black/35"
+                className="inline-flex h-10 w-full items-center justify-center rounded-md border border-[#ff3495] bg-white px-4 text-xs font-black uppercase text-[#ff3495] transition hover:bg-[#ff3495] hover:text-white disabled:cursor-not-allowed disabled:text-black/35 lg:w-auto"
               >
                 Отклонить
               </button>
@@ -908,6 +943,6 @@ function ChangeRequestQueue({
           </div>
         )
       })}
-    </div>
+    </MobileExpandableList>
   )
 }

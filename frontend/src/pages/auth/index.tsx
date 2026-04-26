@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import {
   CalendarDays,
+  Eye,
+  EyeOff,
   KeyRound,
   LogIn,
   UserPlus,
@@ -18,10 +20,12 @@ interface AuthPageProps {
 
 export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
   const [mode, setMode] = useState<AuthMode>('login')
-  const [loginEmail, setLoginEmail] = useState('manager@company.ru')
+  const [loginEmail, setLoginEmail] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
   const [registerEmail, setRegisterEmail] = useState('')
   const [registerPassword, setRegisterPassword] = useState('')
+  const [isLoginPasswordVisible, setIsLoginPasswordVisible] = useState(false)
+  const [isRegisterPasswordVisible, setIsRegisterPasswordVisible] = useState(false)
   const [fullName, setFullName] = useState('')
   const [alliance, setAlliance] = useState('')
   const [vacationDays, setVacationDays] = useState('')
@@ -152,16 +156,17 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
                       type="email"
                       value={loginEmail}
                       autoComplete="email"
-                      placeholder="name@company.ru"
+                      placeholder="Введите почту"
                       onChange={setLoginEmail}
                     />
-                    <TextField
+                    <PasswordField
                       label="Пароль"
-                      type="password"
                       value={loginPassword}
                       autoComplete="current-password"
                       placeholder="Введите пароль"
                       onChange={setLoginPassword}
+                      visible={isLoginPasswordVisible}
+                      onToggleVisibility={() => setIsLoginPasswordVisible((current) => !current)}
                     />
 
                     <button
@@ -196,13 +201,16 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
                         onChange={setRegisterEmail}
                         required
                       />
-                      <TextField
+                      <PasswordField
                         label="Пароль"
-                        type="password"
                         value={registerPassword}
                         autoComplete="new-password"
                         placeholder="Придумайте пароль"
                         onChange={setRegisterPassword}
+                        visible={isRegisterPasswordVisible}
+                        onToggleVisibility={() =>
+                          setIsRegisterPasswordVisible((current) => !current)
+                        }
                         required
                       />
                     </div>
@@ -300,6 +308,52 @@ function TextField({
         className="h-14 w-full rounded-md border border-black/10 bg-[#f7f7f8] px-4 text-base font-medium outline-none transition placeholder:text-black/35 focus:border-[#ff3495] focus:bg-white focus:ring-4 focus:ring-[#ff3495]/15"
         placeholder={placeholder}
       />
+    </label>
+  )
+}
+
+interface PasswordFieldProps extends Omit<TextFieldProps, 'type' | 'min' | 'max'> {
+  visible: boolean
+  onToggleVisibility: () => void
+}
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  autoComplete,
+  required = false,
+  visible,
+  onToggleVisibility,
+}: PasswordFieldProps) {
+  const Icon = visible ? EyeOff : Eye
+
+  return (
+    <label className="mb-4 block">
+      <span className="mb-2 block text-sm font-bold text-black/65">
+        {label}
+        {required && <span className="text-[#ff3495]"> *</span>}
+      </span>
+      <div className="relative">
+        <input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          type={visible ? 'text' : 'password'}
+          autoComplete={autoComplete}
+          required={required}
+          className="h-14 w-full rounded-md border border-black/10 bg-[#f7f7f8] px-4 pr-14 text-base font-medium outline-none transition placeholder:text-black/35 focus:border-[#ff3495] focus:bg-white focus:ring-4 focus:ring-[#ff3495]/15"
+          placeholder={placeholder}
+        />
+        <button
+          type="button"
+          onClick={onToggleVisibility}
+          aria-label={visible ? 'Скрыть пароль' : 'Показать пароль'}
+          className="absolute inset-y-0 right-0 inline-flex w-14 items-center justify-center text-black/45 transition hover:text-black"
+        >
+          <Icon size={18} aria-hidden="true" />
+        </button>
+      </div>
     </label>
   )
 }
