@@ -165,6 +165,18 @@ def main() -> int:
             dt_time(hour=18),
             tzinfo=timezone.utc,
         )
+        closed_template_start_4 = active_start - timedelta(days=35)
+        closed_template_deadline_4 = datetime.combine(
+            today - timedelta(days=22),
+            dt_time(hour=18),
+            tzinfo=timezone.utc,
+        )
+        closed_template_start_5 = active_start - timedelta(days=42)
+        closed_template_deadline_5 = datetime.combine(
+            today - timedelta(days=29),
+            dt_time(hour=18),
+            tzinfo=timezone.utc,
+        )
         expired_start = active_start - timedelta(days=7)
         expired_deadline = datetime.combine(
             today - timedelta(days=1),
@@ -343,6 +355,20 @@ def main() -> int:
             deadline=closed_template_deadline_3,
             is_open=False,
         )
+        closed_template_period_4 = CollectionPeriod(
+            alliance=DEMO_ALLIANCE,
+            period_start=closed_template_start_4,
+            period_end=closed_template_start_4 + timedelta(days=6),
+            deadline=closed_template_deadline_4,
+            is_open=False,
+        )
+        closed_template_period_5 = CollectionPeriod(
+            alliance=DEMO_ALLIANCE,
+            period_start=closed_template_start_5,
+            period_end=closed_template_start_5 + timedelta(days=6),
+            deadline=closed_template_deadline_5,
+            is_open=False,
+        )
         expired_period = CollectionPeriod(
             alliance=DEMO_ALLIANCE,
             period_start=expired_start,
@@ -353,6 +379,8 @@ def main() -> int:
         session.add_all(
             [
                 active_period,
+                closed_template_period_5,
+                closed_template_period_4,
                 closed_template_period_1,
                 closed_template_period_2,
                 closed_template_period_3,
@@ -364,6 +392,8 @@ def main() -> int:
         session.refresh(closed_template_period_1)
         session.refresh(closed_template_period_2)
         session.refresh(closed_template_period_3)
+        session.refresh(closed_template_period_4)
+        session.refresh(closed_template_period_5)
         session.refresh(expired_period)
 
         log("creating employee templates")
@@ -477,6 +507,20 @@ def main() -> int:
         add_schedule_entries(
             session,
             user_id=employee_6.id,
+            period_id=closed_template_period_5.id,
+            start_day=closed_template_period_5.period_start,
+            days=repeated_days_employee_6,
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_6.id,
+            period_id=closed_template_period_4.id,
+            start_day=closed_template_period_4.period_start,
+            days=repeated_days_employee_6,
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_6.id,
             period_id=closed_template_period_2.id,
             start_day=closed_template_period_2.period_start,
             days=repeated_days_employee_6,
@@ -486,6 +530,20 @@ def main() -> int:
             user_id=employee_6.id,
             period_id=closed_template_period_3.id,
             start_day=closed_template_period_3.period_start,
+            days=repeated_days_employee_6,
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_6.id,
+            period_id=closed_template_period_1.id,
+            start_day=closed_template_period_1.period_start,
+            days=repeated_days_employee_6,
+        )
+        add_schedule_entries(
+            session,
+            user_id=employee_6.id,
+            period_id=expired_period.id,
+            start_day=expired_period.period_start,
             days=repeated_days_employee_6,
         )
         add_schedule_entries(
@@ -661,6 +719,9 @@ def main() -> int:
         print("- employee2@company.ru")
         print("- employee6@company.ru")
         print("- employee7@company.ru")
+        print()
+        print("Redeemable streak should be available for:")
+        print("- employee6@company.ru")
         return 0
     finally:
         session.close()
