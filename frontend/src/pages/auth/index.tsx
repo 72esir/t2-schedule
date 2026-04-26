@@ -96,7 +96,7 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
           </a>
         </header>
 
-        <section className="grid flex-1 overflow-hidden rounded-lg border border-black/10 bg-white shadow-[0_24px_80px_rgba(0,0,0,0.08)] lg:grid-cols-[0.95fr_1.05fr]">
+        <section className="grid flex-1 overflow-hidden rounded-md border border-black/10 bg-white lg:grid-cols-[0.95fr_1.05fr]">
           <aside className="bg-black p-6 text-white sm:p-8 lg:p-10">
             <div className="flex h-full flex-col justify-center gap-10">
               <div>
