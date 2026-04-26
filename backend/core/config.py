@@ -9,6 +9,15 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
     AUTO_CREATE_SCHEMA: bool = False
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+    EMAIL_ENABLED: bool = False
+    EMAIL_FROM: str = ""
+    EMAIL_FROM_NAME: str = "T2 Schedule"
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 465
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_USE_SSL: bool = True
+    FRONTEND_APP_URL: str = "http://localhost:5173"
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/integrations/google/callback"

@@ -1,13 +1,14 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.core import get_current_active_user
 from backend.db import get_db
 from backend.models import CollectionPeriod, ScheduleEntry, User, UserRole
+from backend.services import EmailRecipient, send_new_period_notifications
 from backend.schemas import (
     CollectionPeriodCreate,
     CollectionPeriodFromTemplateCreate,
@@ -76,6 +77,24 @@ def create_alliance_period(
     return period
 
 
+def get_verified_alliance_email_recipients(*, db: Session, alliance: str) -> list[EmailRecipient]:
+    users = (
+        db.query(User)
+        .filter(
+            User.alliance == alliance,
+            User.role == UserRole.USER,
+            User.is_verified.is_(True),
+            User.email.isnot(None),
+        )
+        .all()
+    )
+    return [
+        EmailRecipient(email=user.email, full_name=user.full_name)
+        for user in users
+        if user.email
+    ]
+
+
 @router.get("/current", response_model=Optional[CollectionPeriodOut])
 def get_current_period(
     current_user: User = Depends(get_current_active_user),
@@ -103,6 +122,7 @@ def get_period_templates(
 @router.post("", response_model=CollectionPeriodOut, status_code=status.HTTP_201_CREATED)
 def create_period(
     payload: CollectionPeriodCreate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -111,18 +131,32 @@ def create_period(
     if not current_user.alliance:
         raise HTTPException(status_code=400, detail="РЈ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РЅРµ СѓРєР°Р·Р°РЅ Р°Р»СЊСЏРЅСЃ")
 
-    return create_alliance_period(
+    period = create_alliance_period(
         db=db,
         alliance=current_user.alliance,
         period_start=payload.period_start,
         period_end=payload.period_end,
         deadline=payload.deadline,
     )
+    recipients = get_verified_alliance_email_recipients(
+        db=db,
+        alliance=current_user.alliance,
+    )
+    background_tasks.add_task(
+        send_new_period_notifications,
+        recipients=recipients,
+        alliance=current_user.alliance,
+        period_start=period.period_start.isoformat(),
+        period_end=period.period_end.isoformat(),
+        deadline=period.deadline,
+    )
+    return period
 
 
 @router.post("/from-template", response_model=CollectionPeriodOut, status_code=status.HTTP_201_CREATED)
 def create_period_from_template(
     payload: CollectionPeriodFromTemplateCreate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -131,13 +165,26 @@ def create_period_from_template(
     if not current_user.alliance:
         raise HTTPException(status_code=400, detail="РЈ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РЅРµ СѓРєР°Р·Р°РЅ Р°Р»СЊСЏРЅСЃ")
 
-    return create_alliance_period(
+    period = create_alliance_period(
         db=db,
         alliance=current_user.alliance,
         period_start=payload.period_start,
         period_end=payload.resolve_period_end(),
         deadline=payload.deadline,
     )
+    recipients = get_verified_alliance_email_recipients(
+        db=db,
+        alliance=current_user.alliance,
+    )
+    background_tasks.add_task(
+        send_new_period_notifications,
+        recipients=recipients,
+        alliance=current_user.alliance,
+        period_start=period.period_start.isoformat(),
+        period_end=period.period_end.isoformat(),
+        deadline=period.deadline,
+    )
+    return period
 
 
 @router.post("/{period_id}/close", response_model=CollectionPeriodOut)

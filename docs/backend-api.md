@@ -19,6 +19,28 @@ It reflects the current backend contract with only two roles:
 - Public registration always creates a user with role `user`.
 - Manager accounts are not created via public registration.
 
+## Email notifications
+
+Backend can send employee email notifications after manager creates a new period.
+
+Required env for SMTP:
+
+- `EMAIL_ENABLED`
+- `EMAIL_FROM`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USERNAME`
+- `SMTP_PASSWORD`
+- `SMTP_USE_SSL`
+- `FRONTEND_APP_URL`
+
+Current behavior:
+
+- when manager creates a period through `POST /periods`
+- or through `POST /periods/from-template`
+- backend sends a background email to verified employees of the same alliance
+- employees without email or without verification are skipped
+
 ## Shared enums
 
 ### UserRole
@@ -487,6 +509,7 @@ Notes:
 
 - Alliance is taken from current user, not from request body.
 - Previous active period in same alliance is closed automatically.
+- If email notifications are enabled, verified employees of the alliance receive a background email with period dates, deadline, and frontend link.
 
 ### POST `/periods/from-template`
 
@@ -547,6 +570,7 @@ Rules:
 - For non-`custom` templates, `period_end` must not be sent
 - Alliance is taken from current user, not from request body
 - Previous active period in same alliance is closed automatically
+- If email notifications are enabled, verified employees of the alliance receive a background email with period dates, deadline, and frontend link.
 
 ### POST `/periods/{period_id}/close`
 

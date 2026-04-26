@@ -81,6 +81,7 @@ Important:
 - Create period
 - Create period from template: `week`, `two_weeks`, `month`, `custom`
 - Close period
+- Period creation success hint that employees may receive email notification about the new period
 - Employee list
 - Pending employee verification queue
 - Submission status list
