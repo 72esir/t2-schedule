@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   CalendarDays,
   Eye,
@@ -32,6 +32,43 @@ export default function AuthPage({ sessionNotice = '' }: AuthPageProps) {
   const [notice, setNotice] = useState(sessionNotice)
   const loginMutation = useLoginMutation()
   const registerMutation = useRegisterMutation()
+  const autoLoginAttemptedRef = useRef(false)
+
+  useEffect(() => {
+    if (autoLoginAttemptedRef.current) {
+      return
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const email = params.get('email')?.trim()
+    const password = params.get('password') ?? ''
+
+    if (!email || !password) {
+      return
+    }
+
+    autoLoginAttemptedRef.current = true
+    setMode('login')
+    setLoginEmail(email)
+    setLoginPassword(password)
+    setNotice('')
+
+    loginMutation.mutate(
+      {
+        email,
+        password,
+      },
+      {
+        onSuccess: () => {
+          const cleanUrl = `${window.location.origin}${window.location.pathname}`
+          window.history.replaceState({}, document.title, cleanUrl)
+        },
+        onError: (error) => {
+          setNotice(getApiErrorMessage(error))
+        },
+      },
+    )
+  }, [loginMutation])
 
   function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
