@@ -2,16 +2,8 @@ import axios from 'axios'
 
 import { useAuthStore } from '../store/useAuthStore'
 
-const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim().replace(
-  /\/+$/,
-  '',
-)
-
-if (!configuredApiBaseUrl) {
-  throw new Error(
-    'VITE_API_BASE_URL is not set. Create frontend/.env from .env.example.',
-  )
-}
+const configuredApiBaseUrl =
+  import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/+$/, '') || '/api'
 
 export const API_BASE_URL = configuredApiBaseUrl
 
