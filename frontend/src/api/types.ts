@@ -52,6 +52,33 @@ export interface VerificationPayload {
   token: string
 }
 
+export interface StreakHistoryItem {
+  period_id: number
+  period_start: string
+  period_end: string
+  deadline: string
+  success: boolean
+  reason: string
+}
+
+export interface UserStreak {
+  current_streak: number
+  longest_streak: number
+  completed_periods_count: number
+  evaluated_periods_count: number
+  bonus_balance: number
+  redeemable_sets: number
+  history: StreakHistoryItem[]
+}
+
+export interface RedeemStreakResult {
+  converted_streak: number
+  awarded_bonus: number
+  bonus_balance: number
+  current_streak: number
+  redeemable_sets: number
+}
+
 export interface CollectionPeriod {
   id: number
   alliance: string

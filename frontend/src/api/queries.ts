@@ -17,10 +17,10 @@ import type {
   CollectionPeriodFromTemplatePayload,
   EmployeeRegisterPayload,
   LoginPayload,
+  ScheduleChangeRequestPayload,
+  ScheduleChangeRequestManagerApproval,
   ScheduleBulkUpdatePayload,
   VacationDaysModerationPayload,
-  ScheduleChangeRequestPayload,
-  ScheduleChangeRequestManagerApproval
 } from './types'
 import { useAuthStore } from '../store/useAuthStore'
 
@@ -43,6 +43,7 @@ export const queryKeys = {
   myScheduleState: ['schedules', 'me', 'state'] as const,
   myChangeRequest: ['schedules', 'change-request', 'me'] as const,
   suggestedTemplate: ['templates', 'suggested', 'current'] as const,
+  myStreak: ['auth', 'me', 'streak'] as const,
 }
 
 export function useMeQuery() {
@@ -72,6 +73,25 @@ export function useLoginMutation() {
 export function useRegisterMutation() {
   return useMutation({
     mutationFn: (payload: EmployeeRegisterPayload) => authApi.register(payload),
+  })
+}
+
+export function useMyStreakQuery(enabled = true) {
+  return useAuthedQuery({
+    queryKey: queryKeys.myStreak,
+    queryFn: authApi.getStreak,
+    enabled,
+  })
+}
+
+export function useRedeemStreakMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => authApi.redeemStreak(),
+    onSuccess: () => {
+      invalidateMany(queryClient, [queryKeys.myStreak])
+    },
   })
 }
 

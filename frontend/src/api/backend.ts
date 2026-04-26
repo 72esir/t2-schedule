@@ -26,6 +26,8 @@ import type {
   PendingScheduleChangeRequest,
   ScheduleChangeRequestManagerApproval,
   SuggestedTemplate,
+  UserStreak,
+  RedeemStreakResult,
 } from './types'
 
 export const authApi = {
@@ -54,6 +56,16 @@ export const authApi = {
 
   async verify(payload: VerificationPayload): Promise<User> {
     const response = await apiClient.post<User>('/auth/verify', payload)
+    return response.data
+  },
+
+  async getStreak(): Promise<UserStreak> {
+    const response = await apiClient.get<UserStreak>('/auth/me/streak')
+    return response.data
+  },
+
+  async redeemStreak(): Promise<RedeemStreakResult> {
+    const response = await apiClient.post<RedeemStreakResult>('/auth/me/streak/redeem')
     return response.data
   },
 }

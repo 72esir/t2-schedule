@@ -427,7 +427,7 @@ export default function ManagerDashboard({
                         </span>
                       </div>
                       <p className="mt-2 text-sm font-bold text-black/65">
-                        {employee.violation_codes.join(', ')}
+                        {employee.violation_codes.map(formatViolationCode).join(', ')}
                       </p>
                     </div>
                   ))}
@@ -436,7 +436,7 @@ export default function ManagerDashboard({
                 <EmptyState
                   Icon={CheckCircle2}
                   title="Нарушений нет"
-                  text="Backend не вернул проблемные графики."
+                  text="Сотрудников с проблемными графиками сейчас нет."
                 />
               )}
             </Panel>
@@ -803,6 +803,24 @@ function formatDateTime(value: string): string {
 
 function formatNumber(value: number | undefined): string {
   return typeof value === 'number' ? String(value) : '...'
+}
+
+function formatViolationCode(code: string): string {
+  switch (code) {
+    case 'WEEKLY_HOURS_UNDER':
+      return 'Недобор часов за неделю'
+    case 'WEEKLY_HOURS_OVER':
+      return 'Перебор часов за неделю'
+    case 'WORK_STREAK_OVER_6':
+      return 'Больше 6 рабочих дней подряд'
+    case 'NO_SCHEDULE':
+      return 'График не заполнен'
+    default:
+      return code
+        .replaceAll('_', ' ')
+        .toLowerCase()
+        .replace(/^\w/u, (char) => char.toUpperCase())
+  }
 }
 
 interface ChangeRequestQueueProps {

@@ -8,6 +8,8 @@ interface AuthStoreState {
   clearToken: () => void
 }
 
+export type DemoRole = 'manager' | 'user'
+
 export const useAuthStore = create<AuthStoreState>((set) => ({
   token: readStoredToken(),
 
@@ -27,4 +29,5 @@ function readStoredToken(): string | null {
     return null
   }
 
+  return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY)
 }
