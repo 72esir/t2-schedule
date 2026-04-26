@@ -393,12 +393,13 @@ def main() -> int:
             pattern_dense_violation(),
             pattern_under_hours(),
             pattern_vacation_mix(),
-            pattern_empty(),
             pattern_5_2("10:00", "18:00"),
             pattern_5_2("08:00", "16:00"),
+            pattern_5_2("07:00", "15:00"),
         ]
 
-        for employee_index, employee in enumerate(employees[:24]):
+        submitted_active_count = 0
+        for employee_index, employee in enumerate(employees[:12]):
             pattern = active_patterns[employee_index % len(active_patterns)]
             if employee.id == suggested_employee.id:
                 pattern = pattern_empty()
@@ -409,6 +410,7 @@ def main() -> int:
                 start_day=active_period.period_start,
                 days=pattern,
             )
+            submitted_active_count += 1
 
         log("creating pending post-deadline request")
         proposed_schedule = {}
@@ -441,6 +443,7 @@ def main() -> int:
         print(f"Active period start: {active_period.period_start}")
         print(f"Active period end: {active_period.period_end}")
         print(f"Active period deadline: {active_period.deadline.isoformat()}")
+        print(f"Submitted employees in active period: {submitted_active_count}")
         print()
         print("Best single employee for combined demo:")
         print(f"- {suggested_employee.email} / {BIG_EMPLOYEE_PASSWORD}")
@@ -449,7 +452,7 @@ def main() -> int:
         print("  * redeemable streak for bonus exchange")
         print()
         print("Excel/export focus:")
-        print("- 24 verified employees already have active-period entries")
+        print(f"- {submitted_active_count} verified employees already have active-period entries")
         print("- multiple schedule patterns and validation violations are present")
         print("- pending verification, vacation moderation, and change request queues are populated")
         return 0
